@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Krimphoes configurator | Gerbri</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;500;700&family=Roboto:wght@400;500&display=swap">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --navy: #001c36; --blauw: #003963; --groen: #78c4af; --groen-d: #62a091; --grijs: #f5f4f4; --wit: #ffffff;
+    --bg: #f5f4f4; --panel: #ffffff; --stage: #ffffff; --ink: #001c36; --head: #003963; --muted: #4d6177;
+    --line: #d9dde2; --logo-ink: #003963; --field: #ffffff; --grid: #8aa0b2;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #001c36; --panel: #072742; --stage: #0a2f50; --ink: #f5f4f4; --head: #ffffff; --muted: #a9bccd;
+      --line: #1d4468; --logo-ink: #ffffff; --field: #0a2f50; --grid: #7fa0bd; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #001c36; --panel: #072742; --stage: #0a2f50; --ink: #f5f4f4; --head: #ffffff; --muted: #a9bccd;
+    --line: #1d4468; --logo-ink: #ffffff; --field: #0a2f50; --grid: #7fa0bd; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Roboto", Arial, sans-serif; font-size: 16px; line-height: 1.45; }
+  h1, h2 { font-family: "Ubuntu", Arial, Helvetica, sans-serif; color: var(--head); margin: 0; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 18px clamp(16px, 3vw, 36px) 6px; }
+  .brand svg { height: 44px; width: auto; display: block; }
+  .brand .lb { fill: var(--logo-ink); } .brand .lg { fill: var(--groen); }
+  .titleblock h1 { font-weight: 700; font-size: clamp(24px, 3.2vw, 34px); line-height: 1.15; }
+  .titleblock p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+  .dashes { display: flex; gap: 6px; margin-top: 10px; } .dashes i { width: 22px; height: 4px; background: var(--groen); display: block; border-radius: 1px; }
+  main.app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; padding: 14px clamp(16px, 3vw, 36px) 40px; align-items: start; }
+  @media (max-width: 960px) { main.app { grid-template-columns: minmax(0, 1fr); } }
+  .viewer { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  #stage { position: relative; height: clamp(340px, 58vh, 620px); background: var(--stage); touch-action: none; cursor: grab; }
+  #stage:active { cursor: grabbing; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 15px; }
+  .toolbar label { display: flex; align-items: center; gap: 8px; }
+  .flat { padding: 12px 14px 14px; border-top: 1px solid var(--line); }
+  .flat h2 { font-size: 15px; font-weight: 300; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .flat canvas { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  .flat p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+  aside.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 16px 16px; }
+  fieldset { border: 0; border-bottom: 1px solid var(--line); margin: 0; padding: 14px 0 14px; min-width: 0; }
+  fieldset:last-of-type { border-bottom: 0; }
+  legend { font-family: "Ubuntu", Arial, sans-serif; font-weight: 300; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--head); padding: 0; margin-bottom: 8px; float: left; width: 100%; }
+  legend + * { clear: both; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .f { display: flex; flex-direction: column; gap: 3px; flex: 1 1 100px; min-width: 0; font-size: 14px; color: var(--muted); }
+  .f.full { flex-basis: 100%; }
+  input[type=number], input[type=text], select { font: inherit; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+  input[type=range] { width: 100%; accent-color: var(--groen-d); }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink); margin: 4px 0; }
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .btn { font: inherit; font-weight: 500; cursor: pointer; border-radius: 6px; padding: 9px 14px; border: 1px solid var(--groen); background: var(--groen); color: var(--navy); }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn:hover { filter: brightness(.96); } .btn:disabled { opacity: .55; cursor: default; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--groen-d); outline-offset: 2px; }
+  .btn[aria-pressed="true"] { background: var(--blauw); color: #fff; border-color: var(--blauw); }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  .note { font-size: 14px; color: var(--muted); margin: 6px 0 0; }
+  .warn { color: #a05a00; } :root[data-theme="dark"] .warn { color: #ffc27a; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .warn { color: #ffc27a; } }
+  #status { min-height: 1.4em; font-size: 14px; margin-top: 10px; }
+  .hide { display: none !important; }
+  .val { color: var(--ink); font-weight: 500; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="titleblock">
+    <h1>Krimphoes configurator</h1>
+    <p>Bekijk uw krimphoes met logo en maak het EPS-bestand voor de drukker.</p>
+    <div class="dashes" aria-hidden="true"><i></i><i></i><i></i></div>
+  </div>
+  <div class="brand" id="brand" role="img" aria-label="Gerbri, folie toepassingen"></div>
+</header>
+
+<main class="app">
+  <section class="viewer" aria-label="3D-weergave">
+    <div id="stage"></div>
+    <div class="toolbar">
+      <label>Uit elkaar <input id="explode" type="range" min="0" max="100" value="0" style="width:130px"></label>
+      <button class="btn ghost" id="spin" aria-pressed="true">Automatisch draaien</button>
+      <button class="btn ghost" id="dims" aria-pressed="false">Maten tonen</button>
+      <button class="btn ghost" id="reset">Beeld herstellen</button>
+    </div>
+    <div class="flat">
+      <h2>Afgerolde hoes voor de leverancier</h2>
+      <canvas id="flat" aria-label="Afgerolde hoes met logo's"></canvas>
+      <p id="flatinfo"></p>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <fieldset>
+      <legend>Uw logo</legend>
+      <div class="btns">
+        <button class="btn" id="pick">Logo uploaden</button>
+        <button class="btn ghost" id="demo">Gerbri-voorbeeld</button>
+      </div>
+      <input id="file" type="file" accept=".png,.jpg,.jpeg,.webp,.gif,.svg,image/*" class="hide">
+      <p class="note" id="loginfo">Voorbeeldlogo Gerbri (vector).</p>
+      <p class="note">PNG, JPG of SVG. Witte of lege randen worden automatisch weggesneden.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Hoes</legend>
+      <div class="row">
+        <label class="f">Lengte (mm)<input type="number" id="L" min="300" max="2500" step="10"></label>
+        <label class="f">Breedte (mm)<input type="number" id="B" min="300" max="2500" step="10"></label>
+        <label class="f">Hoogte (mm)<input type="number" id="H" min="300" max="3000" step="10"></label>
+      </div>
+      <div class="row">
+        <label class="f full">Foliekleur
+          <select id="film"><option>transparant</option><option>wit</option><option>blauw</option><option>groen</option><option>zwart</option></select>
+        </label>
+      </div>
+      <p class="note">Maten van de hoes om het pakket. De maat vóór het krimpen bepaalt de leverancier.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Pallet en pakket</legend>
+      <div class="row">
+        <label class="f full">Pallet
+          <select id="pallet"><option value="eur">Europallet 1200 × 800</option><option value="ind">Industriepallet 1200 × 1000</option><option value="eigen">Eigen maat</option><option value="geen">Geen pallet</option></select>
+        </label>
+      </div>
+      <div class="row hide" id="palcustom">
+        <label class="f">Pallet lengte (mm)<input type="number" id="palL" min="400" max="2500" step="10"></label>
+        <label class="f">Pallet breedte (mm)<input type="number" id="palB" min="400" max="2500" step="10"></label>
+      </div>
+      <div class="row">
+        <label class="f full">Pakket
+          <select id="pack"><option value="stenen">Stenen (waalformaat)</option><option value="blok">Neutraal blok</option></select>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Logo op de hoes</legend>
+      <div class="checks">
+        <label class="check"><input type="checkbox" class="side" data-i="0" checked>Voorzijde</label>
+        <label class="check"><input type="checkbox" class="side" data-i="2" checked>Achterzijde</label>
+        <label class="check"><input type="checkbox" class="side" data-i="1" checked>Zijkant rechts</label>
+        <label class="check"><input type="checkbox" class="side" data-i="3" checked>Zijkant links</label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="f"><span>Logobreedte lange zijde: <span class="val" id="wLongV"></span> mm</span><input type="range" id="wLong" min="100" max="1000" step="10"></label>
+        <label class="f"><span>Logobreedte korte zijde: <span class="val" id="wShortV"></span> mm</span><input type="range" id="wShort" min="100" max="1000" step="10"></label>
+      </div>
+      <div class="row">
+        <label class="f full"><span>Hoogte van het logo-midden: <span class="val" id="posV"></span> % van de onderkant</span><input type="range" id="pos" min="10" max="90" step="1"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="patch" checked>Wit vlak onder het logo</label>
+      <div class="row" id="padrow">
+        <label class="f full"><span>Marge wit vlak: <span class="val" id="padV"></span> mm</span><input type="range" id="pad" min="10" max="100" step="5"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Bestand voor de leverancier</legend>
+      <div class="row">
+        <label class="f full">Uw referentie of ordernummer (optioneel)<input type="text" id="ref" maxlength="60"></label>
+      </div>
+      <div class="btns">
+        <button class="btn" id="dl">EPS-bestand maken</button>
+        <button class="btn ghost" id="dlpng">Voorbeeld (PNG)</button>
+      </div>
+      <p class="note" id="dlnote"></p>
+      <div id="status" role="status" aria-live="polite"></div>
+    </fieldset>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===== CORE: layout, EPS, ZIP (geen DOM nodig) ===== */
+var GERBRI_BOX = { x0: 181, y0: 232, x1: 700, y1: 377 };
+var GERBRI_ASPECT = (GERBRI_BOX.x1 - GERBRI_BOX.x0) / (GERBRI_BOX.y1 - GERBRI_BOX.y0);
+var MMPT = 2.834645669;
+var CMYK_BLAUW = '1 0.57 0.09 0.52 setcmykcolor';  // Gerbri blauw C100 M57 Y9 K52
+var CMYK_GROEN = '0.56 0 0.39 0 setcmykcolor';     // Gerbri groen C56 M0 Y39 K0
+
+function pathToPS(d) {
+  var toks = d.match(/[MLCZ]|-?\d+\.?\d*/g), out = [], i = 0, cmd = null;
+  while (i < toks.length) {
+    var t = toks[i];
+    if (/[MLCZ]/.test(t)) { cmd = t; i++; if (cmd === 'Z') { out.push('closepath'); continue; } }
+    var n = cmd === 'C' ? 6 : 2;
+    out.push(toks.slice(i, i + n).join(' ') + ' ' + (cmd === 'M' ? 'moveto' : cmd === 'L' ? 'lineto' : 'curveto'));
+    i += n; if (cmd === 'M') cmd = 'L';
+  }
+  return out.join('\n');
+}
+
+function panelsOf(s) {
+  return [
+    { name: 'Voorzijde', w: s.L, long: true },
+    { name: 'Zijkant rechts', w: s.B, long: false },
+    { name: 'Achterzijde', w: s.L, long: true },
+    { name: 'Zijkant links', w: s.B, long: false }
+  ];
+}
+
+// Alle maten in mm. cy = hoogte van het logo-midden vanaf de onderkant van de hoes.
+function layoutOf(s, aspect) {
+  var panels = panelsOf(s), x = 0, items = [];
+  panels.forEach(function (p, i) {
+    p.x0 = x; x += p.w;
+    if (!s.sides[i]) return;
+    var pad = s.patch ? s.pad : 0;
+    var lw = Math.max(10, Math.min(p.long ? s.wLong : s.wShort, p.w * 0.94 - 2 * pad));
+    var lh = lw / aspect;
+    var maxH = s.H - 2 * pad;
+    if (lh > maxH) { lh = Math.max(10, maxH); lw = lh * aspect; }
+    var cy = s.H * s.pos / 100;
+    cy = Math.max(lh / 2 + pad, Math.min(s.H - lh / 2 - pad, cy));
+    items.push({ i: i, name: p.name, cx: p.x0 + p.w / 2, cy: cy, w: lw, h: lh, pad: pad });
+  });
+  return { panels: panels, items: items, AW: x, AH: s.H };
+}
+
+function ps(str) {
+  return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '?')
+    .replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+function ascii85(b) {
+  var parts = [], n = b.length, i = 0, v, k, c;
+  for (; i + 4 <= n; i += 4) {
+    v = b[i] * 16777216 + (b[i + 1] << 16) + (b[i + 2] << 8) + b[i + 3];
+    if (v === 0) { parts.push('z'); continue; }
+    c = [0, 0, 0, 0, 0];
+    for (k = 4; k >= 0; k--) { c[k] = v % 85 + 33; v = Math.floor(v / 85); }
+    parts.push(String.fromCharCode.apply(null, c));
+  }
+  var r = n - i;
+  if (r > 0) {
+    v = 0; for (k = 0; k < 4; k++) v = v * 256 + (k < r ? b[i + k] : 0);
+    c = [0, 0, 0, 0, 0];
+    for (k = 4; k >= 0; k--) { c[k] = v % 85 + 33; v = Math.floor(v / 85); }
+    parts.push(String.fromCharCode.apply(null, c.slice(0, r + 1)));
+  }
+  return parts.join('').replace(/(.{72})/g, '$1\n') + '~>\n';
+}
+
+function roundRectPS(x0, y0, x1, y1, r) {
+  return 'newpath ' + (x0 + r).toFixed(2) + ' ' + y0.toFixed(2) + ' moveto ' +
+    [x1, y0, x1, y1].map(function (v) { return v.toFixed(2); }).join(' ') + ' ' + r + ' arct ' +
+    [x1, y1, x0, y1].map(function (v) { return v.toFixed(2); }).join(' ') + ' ' + r + ' arct ' +
+    [x0, y1, x0, y0].map(function (v) { return v.toFixed(2); }).join(' ') + ' ' + r + ' arct ' +
+    [x0, y0, x1, y0].map(function (v) { return v.toFixed(2); }).join(' ') + ' ' + r + ' arct closepath';
+}
+
+function centerText(text, cx, y, size, gray) {
+  return '/Helvetica findfont ' + size + ' scalefont setfont 0 0 0 ' + gray + ' setcmykcolor (' + ps(text) +
+    ') dup stringwidth pop 2 div ' + cx.toFixed(2) + ' exch sub ' + y.toFixed(2) + ' moveto show';
+}
+function leftText(text, x, y, size, gray) {
+  return '/Helvetica findfont ' + size + ' scalefont setfont 0 0 0 ' + gray + ' setcmykcolor ' + x.toFixed(2) + ' ' +
+    y.toFixed(2) + ' moveto (' + ps(text) + ') show';
+}
+
+/* logo: {kind:'gerbri', paths:[{c,d}]}  of  {kind:'raster', w, h, rgb:Uint8Array}  (aspect = w/h) */
+async function buildEps(s, logo, deflate, when) {
+  var lay = layoutOf(s, logo.aspect), M = 60;
+  var W = lay.AW + 2 * M, H = lay.AH + 2 * M, raster = logo.kind === 'raster';
+  var out = [];
+  var hdr = '%!PS-Adobe-3.0 EPSF-3.0\n%%Title: ' + ps('Krimphoes ' + lay.AW + ' x ' + lay.AH + ' mm') +
+    '\n%%Creator: Gerbri krimphoes configurator\n%%CreationDate: ' + when.toISOString().slice(0, 10) +
+    '\n%%BoundingBox: 0 0 ' + Math.ceil(W * MMPT) + ' ' + Math.ceil(H * MMPT) +
+    '\n%%HiResBoundingBox: 0 0 ' + (W * MMPT).toFixed(3) + ' ' + (H * MMPT).toFixed(3) +
+    '\n%%DocumentProcessColors: Cyan Magenta Yellow Black\n%%DocumentCustomColors: (White)\n' +
+    '%%CMYKCustomColor: 0 0 0 0 (White)\n%%LanguageLevel: ' + (raster ? 3 : 2) + '\n%%EndComments\n%%BeginProlog\n' +
+    '/CSWit [/Separation (White) /DeviceCMYK {pop 0 0 0 0.06}] def\n%%EndProlog\n' + MMPT + ' ' + MMPT + ' scale\n';
+  out.push(hdr);
+
+  var rasterData = null;
+  if (raster) rasterData = ascii85(await deflate(logo.rgb));
+
+  lay.items.forEach(function (it) {
+    var cx = M + it.cx, cy = M + it.cy;
+    out.push('% --- ' + it.name + ' ---');
+    if (it.pad > 0) {
+      out.push(roundRectPS(cx - it.w / 2 - it.pad, cy - it.h / 2 - it.pad, cx + it.w / 2 + it.pad, cy + it.h / 2 + it.pad, Math.min(8, it.pad)) +
+        ' CSWit setcolorspace 1 setcolor fill');
+    }
+    if (!raster) {
+      var k = it.w / (GERBRI_BOX.x1 - GERBRI_BOX.x0);
+      out.push('gsave ' + cx.toFixed(3) + ' ' + cy.toFixed(3) + ' translate ' + k.toFixed(6) + ' ' + (-k).toFixed(6) + ' scale ' +
+        (-(GERBRI_BOX.x0 + GERBRI_BOX.x1) / 2) + ' ' + (-(GERBRI_BOX.y0 + GERBRI_BOX.y1) / 2) + ' translate');
+      logo.paths.forEach(function (p) {
+        out.push('newpath\n' + pathToPS(p.d) + '\n' + (p.c === 'b' ? CMYK_BLAUW : CMYK_GROEN) + ' fill');
+      });
+      out.push('grestore');
+    } else {
+      out.push('gsave ' + (cx - it.w / 2).toFixed(3) + ' ' + (cy - it.h / 2).toFixed(3) + ' translate ' + it.w.toFixed(3) + ' ' + it.h.toFixed(3) + ' scale');
+      out.push('/DeviceRGB setcolorspace');
+      out.push('<< /ImageType 1 /Width ' + logo.w + ' /Height ' + logo.h + ' /BitsPerComponent 8 /Decode [0 1 0 1 0 1] ' +
+        '/ImageMatrix [' + logo.w + ' 0 0 ' + (-logo.h) + ' 0 ' + logo.h + '] /Interpolate true ' +
+        '/DataSource currentfile /ASCII85Decode filter /FlateDecode filter >> image');
+      out.push(rasterData.replace(/\n$/, ''));
+      out.push('grestore');
+    }
+  });
+
+  // Hulpmarkeringen buiten de afbeelding (niet printen)
+  out.push('% --- hulpmarkeringen (niet printen) ---');
+  out.push('0.25 setlinewidth 0 0 0 1 setcmykcolor');
+  function seg(a, b, c, d) { return 'newpath ' + a + ' ' + b + ' moveto ' + c + ' ' + d + ' lineto stroke'; }
+  [M, M + lay.AW].forEach(function (x) {
+    [M, M + lay.AH].forEach(function (y) {
+      var sx = x === M ? -1 : 1, sy = y === M ? -1 : 1;
+      out.push(seg(x + sx * 5, y, x + sx * 30, y)); out.push(seg(x, y + sy * 5, x, y + sy * 30));
+    });
+  });
+  var x = M;
+  lay.panels.slice(0, 3).forEach(function (p) {
+    x += p.w;
+    out.push(seg(x, M + lay.AH + 5, x, M + lay.AH + 30)); out.push(seg(x, M - 5, x, M - 30));
+  });
+  lay.panels.forEach(function (p) {
+    out.push(centerText(p.name + ' ' + p.w + ' mm', M + p.x0 + p.w / 2, M + lay.AH + 38, 12, 0.65));
+  });
+  var legend = (s.ref ? 'Referentie: ' + s.ref + '  |  ' : '') + 'Krimphoes ' + s.L + ' x ' + s.B + ' x ' + s.H + ' mm, afgerolde omtrek ' + lay.AW +
+    ' mm  |  schaal 1:1  |  folie: ' + s.film + '  |  wit vlak = steunkleur White  |  hulpmarkeringen buiten de afbeelding niet printen';
+  out.push(leftText(legend, M, M - 45, 9, 0.65));
+  out.push('showpage\n%%EOF\n');
+  return out.join('\n');
+}
+
+function buildSpec(s, logo, when) {
+  var lay = layoutOf(s, logo.aspect), L = [];
+  L.push('GERBRI KRIMPHOES - SPECIFICATIE', '');
+  if (s.ref) L.push('Referentie: ' + s.ref);
+  L.push('Datum: ' + when.toISOString().slice(0, 10), '');
+  L.push('Hoes (maat om het pakket): ' + s.L + ' x ' + s.B + ' x ' + s.H + ' mm (lengte x breedte x hoogte)');
+  L.push('Afgerolde omtrek: ' + lay.AW + ' mm, hoogte ' + lay.AH + ' mm');
+  L.push('Foliekleur: ' + s.film);
+  L.push('Opmerking: dit zijn de maten van de hoes zoals hij om het pakket zit. De maat voor het krimpen bepaalt de leverancier.', '');
+  L.push('Zijden van links naar rechts in het EPS-bestand:');
+  lay.panels.forEach(function (p) { L.push('  ' + p.name + ': ' + p.w + ' mm breed (vanaf links ' + Math.round(p.x0) + ' mm)'); });
+  L.push('', 'Logo-plaatsing (mm, vanaf de linkerrand van de afgerolde hoes en vanaf de onderrand):');
+  if (!lay.items.length) L.push('  geen logo geplaatst');
+  lay.items.forEach(function (it) {
+    L.push('  ' + it.name + ': midden op ' + Math.round(it.cx) + ' mm van links en ' + Math.round(it.cy) + ' mm van onder, logo ' +
+      Math.round(it.w) + ' x ' + Math.round(it.h) + ' mm' + (it.pad ? ', wit vlak met ' + it.pad + ' mm marge' : ', zonder wit vlak'));
+  });
+  L.push('', 'Logo: ' + (logo.kind === 'raster' ? (logo.name || 'afbeelding') + ', ' + logo.w + ' x ' + logo.h + ' pixels (rasterafbeelding, RGB)' : 'Gerbri, vectorlogo (CMYK)'));
+  L.push('Het witte vlak staat als steunkleur "White" in het bestand (witte onderdruk).');
+  L.push('Hulpmarkeringen (snijmerken, vouwmerken, labels) staan buiten de afbeelding en zijn niet bedoeld om te printen.');
+  return L.join('\r\n') + '\r\n';
+}
+
+function crc32(u8) {
+  var t = crc32.t;
+  if (!t) { t = crc32.t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } }
+  var c2 = 0xFFFFFFFF;
+  for (var i = 0; i < u8.length; i++) c2 = t[(c2 ^ u8[i]) & 255] ^ (c2 >>> 8);
+  return (c2 ^ 0xFFFFFFFF) >>> 0;
+}
+
+function makeZip(files, when) {
+  var enc = new TextEncoder(), parts = [], central = [], off = 0;
+  var dosTime = (when.getHours() << 11) | (when.getMinutes() << 5) | (when.getSeconds() >> 1);
+  var dosDate = ((when.getFullYear() - 1980) << 9) | ((when.getMonth() + 1) << 5) | when.getDate();
+  files.forEach(function (f) {
+    var name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+    var lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, size, true); lh.setUint32(22, size, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, f.data);
+    var ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint16(10, 0, true); ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, size, true); ch.setUint32(24, size, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + size;
+  });
+  var csize = 0; central.forEach(function (c) { csize += c.length; });
+  var end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, csize, true); end.setUint32(16, off, true);
+  return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
+}
+
+async function deflateZlib(u8) {
+  var cs = new CompressionStream('deflate'), w = cs.writable.getWriter();
+  w.write(u8); w.close();
+  return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+}
+
+
+</script>
+<script>
+var GERBRI_PATHS = [{"c":"b","d":"M 395 337 L 404 337 C 408 337 411 338 413 339 C 415 340 416 341 416 343 C 416 346 414 349 411 350 C 408 352 403 353 397 353 C 393 353 390 352 387 351 C 385 349 384 348 384 345 C 384 343 385 341 387 339 C 389 338 392 337 395 337 M 413 275 C 413 275 410 275 410 275 C 410 274 408 274 406 274 C 403 274 401 273 400 273 C 391 273 385 275 381 279 C 376 283 374 288 374 295 C 374 299 375 302 377 306 C 379 309 381 311 383 312 C 383 312 385 312 383 313 C 382 314 380 316 379 317 C 377 319 377 321 377 323 C 377 325 377 327 379 328 C 380 330 381 331 382 331 C 382 331 383 332 381 332 C 379 333 375 335 373 337 C 371 340 369 343 369 347 C 369 352 372 356 376 359 C 381 362 388 364 396 364 C 407 364 416 362 422 358 C 428 354 431 348 431 341 C 431 335 429 331 426 328 C 422 325 417 324 410 324 L 400 324 C 394 324 390 323 390 320 C 390 318 391 317 392 316 C 392 316 393 316 395 316 L 399 316 C 407 316 413 314 418 310 C 423 307 425 302 425 295 C 425 292 424 288 423 287 C 423 287 422 286 425 285 L 430 284 C 430 284 432 283 432 281 L 432 278 C 432 278 432 275 429 275 Z M 409 295 C 409 298 408 301 406 303 C 405 305 403 306 400 306 C 397 306 394 305 393 303 C 391 301 390 298 390 295 C 390 287 393 284 400 284 C 406 284 409 287 409 295"},{"c":"b","d":"M 456 299 C 456 294 457 291 459 289 C 461 287 464 285 467 285 C 471 285 474 287 476 289 C 478 291 479 294 479 299 Z M 488 281 C 483 276 476 273 467 273 C 458 273 451 276 446 282 C 441 288 438 296 438 306 C 438 316 441 324 446 329 C 452 335 460 338 470 338 C 478 338 486 336 489 335 C 489 335 492 333 492 330 L 492 321 C 492 321 491 320 490 321 C 490 321 490 321 489 321 C 483 324 477 325 471 325 C 466 325 462 324 459 321 C 457 318 455 315 455 312 C 455 312 455 310 458 310 L 492 310 C 492 310 495 310 495 307 L 495 302 C 495 293 493 286 488 281"},{"c":"b","d":"M 547 274 C 546 274 545 273 542 273 C 539 273 535 274 532 277 C 529 279 526 281 524 285 L 524 285 C 524 285 523 285 522 282 L 521 277 C 521 277 521 275 518 275 L 511 275 C 511 275 508 275 508 278 L 508 334 C 508 334 508 337 511 337 L 522 337 C 522 337 525 337 525 334 L 525 305 C 525 300 526 296 529 293 C 532 291 536 289 542 289 C 544 289 545 289 545 289 C 546 290 547 289 547 288 L 547 286 L 548 277 C 548 277 548 274 547 274"},{"c":"b","d":"M 588 324 C 584 324 581 323 579 320 C 577 317 576 312 576 305 L 576 304 C 576 298 577 293 579 291 C 581 288 584 287 588 287 C 592 287 595 289 597 292 C 599 295 600 299 600 305 C 600 311 599 316 597 319 C 595 322 592 324 588 324 M 575 283 C 576 277 576 273 576 270 L 576 256 C 576 256 576 253 573 253 L 562 253 C 562 253 559 253 559 256 L 559 334 C 559 334 559 337 562 337 L 569 337 C 569 337 572 337 573 334 L 575 330 L 576 330 C 580 335 586 338 593 338 C 601 338 606 335 611 329 C 615 324 617 316 617 306 C 617 296 615 288 611 282 C 607 276 601 273 593 273 C 586 273 580 276 576 283 Z M 575 283"},{"c":"b","d":"M 669 274 C 668 274 666 273 664 273 C 660 273 657 274 654 277 C 650 279 648 281 646 285 L 645 285 C 645 285 645 285 644 282 L 643 277 C 643 277 642 275 639 275 L 633 275 C 633 275 630 275 630 278 L 630 334 C 630 334 630 337 633 337 L 644 337 C 644 337 646 337 646 334 L 646 305 C 646 300 648 296 651 293 C 654 291 658 289 664 289 C 666 289 667 289 667 289 C 668 290 669 289 669 288 L 669 286 L 670 277 C 670 277 670 274 669 274"},{"c":"b","d":"M 685 275 C 685 275 682 275 682 278 L 682 334 C 682 334 682 337 685 337 L 696 337 C 696 337 699 337 699 334 L 699 278 C 699 278 699 275 696 275 Z M 685 275"},{"c":"g","d":"M 281 233 C 281 233 281 233 281 233 C 291 239 300 246 307 257 C 309 259 311 264 311 264 C 311 264 312 265 312 265 L 320 265 C 321 265 321 264 321 264 C 321 264 318 260 317 258 C 317 257 316 256 316 256 C 313 251 309 247 305 243 C 301 239 296 236 291 233 C 291 233 290 233 290 233 C 290 233 290 233 289 233 L 281 233 C 280 233 280 233 281 233"},{"c":"g","d":"M 257 233 C 257 233 258 233 259 233 C 260 234 261 234 262 235 C 266 237 271 240 275 243 C 276 244 277 245 278 245 C 282 249 285 252 288 256 C 290 259 293 264 293 264 C 293 264 294 265 294 265 L 302 265 C 302 265 303 264 302 264 C 302 264 300 259 298 257 C 295 252 291 248 287 244 C 283 241 279 237 274 235 C 273 234 271 234 270 233 C 270 233 270 233 270 233 C 269 233 269 233 269 233 L 257 233 C 257 233 257 233 257 233"},{"c":"g","d":"M 325 290 C 322 287 318 286 314 286 L 266 286 C 265 286 265 286 265 287 L 263 293 C 263 294 263 294 264 294 L 314 294 C 316 294 318 295 319 296 C 320 297 321 299 321 301 C 321 310 318 324 309 336 C 303 345 291 356 272 356 C 253 356 236 341 229 326 C 219 307 225 289 229 281 C 234 273 240 267 248 262 C 251 260 257 257 257 257 C 258 257 258 257 257 256 C 256 255 252 253 251 253 C 251 252 250 252 250 252 C 250 252 245 254 242 256 C 239 258 235 261 232 264 C 228 268 225 272 222 277 C 220 281 217 289 216 297 C 214 308 216 319 221 329 C 227 340 235 349 244 355 C 253 361 263 364 272 364 C 295 364 309 351 316 341 C 325 327 329 312 329 301 C 329 297 328 293 325 290"},{"c":"g","d":"M 257 342 C 256 342 255 343 255 343 C 255 343 255 343 255 343 C 256 344 259 346 261 346 C 261 346 262 346 262 346 C 262 346 263 346 264 345 C 275 340 284 332 289 325 C 289 324 290 323 291 322 C 292 319 293 317 293 316 C 293 316 293 315 292 315 L 258 315 C 258 315 257 316 257 316 L 256 323 C 255 323 256 323 256 323 L 280 323 C 274 330 265 336 257 342"},{"c":"g","d":"M 281 348 C 283 347 287 345 292 343 C 294 341 298 338 302 333 C 310 322 312 311 313 305 C 313 304 312 303 311 302 C 311 301 310 301 308 301 L 262 301 C 261 301 261 301 261 301 L 259 308 C 259 309 259 309 260 309 L 302 309 C 303 309 303 310 303 311 C 302 317 298 326 291 334 C 288 337 284 341 279 344 C 277 346 273 348 273 348 C 273 348 273 348 274 348 C 274 348 277 348 281 348"},{"c":"g","d":"M 225 364 C 225 364 222 362 221 361 C 215 357 210 352 205 347 C 204 345 203 343 201 341 C 201 341 201 340 201 340 C 200 339 200 339 199 338 C 199 338 199 338 199 338 C 193 328 190 316 190 302 C 190 270 211 241 236 241 C 241 241 248 242 257 247 C 261 250 265 253 268 257 C 271 259 274 264 274 264 C 274 264 275 265 275 265 L 284 265 C 284 265 284 264 284 264 C 284 264 280 258 278 256 C 276 253 274 250 271 248 C 267 245 263 242 259 239 C 257 238 255 237 253 236 C 246 234 240 233 236 233 C 222 233 208 241 198 254 C 188 267 182 285 182 302 C 182 317 185 329 191 340 C 193 343 194 345 196 347 C 200 352 204 357 209 361 C 210 362 213 364 213 364 C 213 364 214 364 214 364 L 225 364 C 225 364 225 364 225 364"},{"c":"g","d":"M 249 364 C 249 364 249 364 249 364 C 246 362 243 361 240 359 C 239 359 238 358 238 358 C 232 354 227 349 222 344 C 220 341 217 338 216 335 C 214 333 213 330 212 327 C 208 319 206 309 207 298 C 208 287 211 278 217 270 C 218 268 219 267 220 266 C 220 265 221 265 221 264 C 230 255 237 251 241 249 C 241 249 241 249 241 249 C 241 249 240 249 240 249 C 228 247 218 253 209 267 C 203 276 200 286 199 297 C 198 309 200 321 204 331 C 204 332 205 332 205 332 C 205 333 205 334 206 334 C 207 337 209 340 211 342 C 215 348 219 352 224 356 C 227 358 229 360 232 362 C 234 363 236 364 236 364 C 236 364 237 364 237 364 L 249 364 C 249 364 249 364 249 364 C 249 364 249 364 249 364 C 249 364 249 364 249 364"},{"c":"b","d":"M 456.3 375.7 L 456.3 359.3 L 466.19 359.3 L 466.19 361.26 L 458.6 361.26 L 458.6 366.21 L 465.34 366.21 L 465.34 368.15 L 458.6 368.15 L 458.6 375.7 Z M 468.77 367.49 C 468.77 366.08 468.98 364.85 469.4 363.77 C 469.82 362.7 470.38 361.81 471.1 361.09 C 471.82 360.37 472.66 359.83 473.61 359.47 C 474.56 359.1 475.58 358.92 476.65 358.92 C 477.71 358.92 478.71 359.1 479.64 359.47 C 480.58 359.83 481.41 360.37 482.12 361.09 C 482.83 361.81 483.39 362.7 483.81 363.77 C 484.23 364.85 484.44 366.08 484.44 367.49 C 484.44 368.89 484.23 370.13 483.81 371.2 C 483.39 372.28 482.83 373.17 482.12 373.89 C 481.41 374.61 480.58 375.15 479.64 375.51 C 478.71 375.87 477.71 376.06 476.65 376.06 C 475.58 376.06 474.56 375.87 473.61 375.51 C 472.66 375.15 471.82 374.61 471.1 373.89 C 470.38 373.17 469.82 372.28 469.4 371.2 C 468.98 370.13 468.77 368.89 468.77 367.49 Z M 471.19 367.49 C 471.19 368.48 471.31 369.38 471.56 370.2 C 471.82 371.01 472.18 371.7 472.64 372.27 C 473.11 372.84 473.67 373.27 474.34 373.58 C 475.01 373.89 475.77 374.04 476.6 374.04 C 477.44 374.04 478.19 373.89 478.85 373.58 C 479.51 373.27 480.08 372.84 480.54 372.27 C 481.01 371.7 481.37 371.01 481.62 370.2 C 481.87 369.38 482 368.48 482 367.49 C 482 366.49 481.87 365.59 481.62 364.78 C 481.37 363.97 481.01 363.28 480.54 362.71 C 480.08 362.14 479.51 361.7 478.85 361.39 C 478.19 361.09 477.44 360.93 476.6 360.93 C 475.77 360.93 475.01 361.09 474.34 361.39 C 473.67 361.7 473.11 362.14 472.64 362.71 C 472.18 363.28 471.82 363.97 471.56 364.78 C 471.31 365.59 471.19 366.49 471.19 367.49 Z M 498.14 373.71 L 498.14 375.7 L 488.27 375.7 L 488.27 359.3 L 490.57 359.3 L 490.57 373.71 Z M 500.98 359.3 L 503.27 359.3 L 503.27 375.7 L 500.98 375.7 Z M 507.77 375.7 L 507.77 359.3 L 517.78 359.3 L 517.78 361.26 L 510.06 361.26 L 510.06 366.14 L 516.93 366.14 L 516.93 368.06 L 510.06 368.06 L 510.06 373.74 L 518.37 373.74 L 518.37 375.7 Z M 538.56 359.3 L 538.56 361.29 L 533.4 361.29 L 533.4 375.7 L 531.1 375.7 L 531.1 361.29 L 525.94 361.29 L 525.94 359.3 Z M 540.73 367.49 C 540.73 366.08 540.94 364.85 541.36 363.77 C 541.78 362.7 542.35 361.81 543.06 361.09 C 543.78 360.37 544.62 359.83 545.57 359.47 C 546.53 359.1 547.54 358.92 548.61 358.92 C 549.67 358.92 550.67 359.1 551.61 359.47 C 552.55 359.83 553.37 360.37 554.08 361.09 C 554.79 361.81 555.35 362.7 555.77 363.77 C 556.19 364.85 556.4 366.08 556.4 367.49 C 556.4 368.89 556.19 370.13 555.77 371.2 C 555.35 372.28 554.79 373.17 554.08 373.89 C 553.37 374.61 552.55 375.15 551.61 375.51 C 550.67 375.87 549.67 376.06 548.61 376.06 C 547.54 376.06 546.53 375.87 545.57 375.51 C 544.62 375.15 543.78 374.61 543.06 373.89 C 542.35 373.17 541.78 372.28 541.36 371.2 C 540.94 370.13 540.73 368.89 540.73 367.49 Z M 543.15 367.49 C 543.15 368.48 543.27 369.38 543.53 370.2 C 543.78 371.01 544.14 371.7 544.6 372.27 C 545.07 372.84 545.64 373.27 546.31 373.58 C 546.98 373.89 547.73 374.04 548.57 374.04 C 549.4 374.04 550.15 373.89 550.82 373.58 C 551.48 373.27 552.04 372.84 552.51 372.27 C 552.97 371.7 553.33 371.01 553.58 370.2 C 553.84 369.38 553.96 368.48 553.96 367.49 C 553.96 366.49 553.84 365.59 553.58 364.78 C 553.33 363.97 552.97 363.28 552.51 362.71 C 552.04 362.14 551.48 361.7 550.82 361.39 C 550.15 361.09 549.4 360.93 548.57 360.93 C 547.73 360.93 546.98 361.09 546.31 361.39 C 545.64 361.7 545.07 362.14 544.6 362.71 C 544.14 363.28 543.78 363.97 543.53 364.78 C 543.27 365.59 543.15 366.49 543.15 367.49 Z M 560.23 375.7 L 560.23 359.3 L 570.24 359.3 L 570.24 361.26 L 562.53 361.26 L 562.53 366.14 L 569.39 366.14 L 569.39 368.06 L 562.53 368.06 L 562.53 373.74 L 570.84 373.74 L 570.84 375.7 Z M 578.52 359.13 C 580.83 359.13 582.6 359.57 583.84 360.45 C 585.08 361.32 585.7 362.63 585.7 364.36 C 585.7 365.31 585.53 366.12 585.19 366.79 C 584.85 367.46 584.36 368 583.72 368.42 C 583.08 368.84 582.3 369.14 581.39 369.33 C 580.47 369.52 579.44 369.62 578.29 369.62 L 576.47 369.62 L 576.47 375.7 L 574.17 375.7 L 574.17 359.54 C 574.82 359.38 575.54 359.27 576.34 359.22 C 577.13 359.16 577.86 359.13 578.52 359.13 Z M 578.72 361.15 C 577.74 361.15 576.99 361.17 576.47 361.22 L 576.47 367.65 L 578.19 367.65 C 578.98 367.65 579.69 367.6 580.32 367.5 C 580.96 367.4 581.49 367.22 581.92 366.98 C 582.36 366.74 582.69 366.4 582.93 365.97 C 583.16 365.55 583.28 365 583.28 364.34 C 583.28 363.71 583.16 363.19 582.91 362.78 C 582.67 362.37 582.34 362.04 581.92 361.8 C 581.5 361.55 581.02 361.38 580.47 361.29 C 579.91 361.19 579.33 361.15 578.72 361.15 Z M 599.94 375.7 C 599.67 374.99 599.42 374.29 599.18 373.61 C 598.95 372.92 598.7 372.22 598.45 371.51 L 591.02 371.51 L 589.53 375.7 L 587.14 375.7 C 587.77 373.96 588.36 372.36 588.91 370.88 C 589.47 369.41 590.01 368.01 590.53 366.68 C 591.06 365.36 591.59 364.09 592.11 362.88 C 592.63 361.68 593.17 360.48 593.74 359.3 L 595.85 359.3 C 596.42 360.48 596.96 361.68 597.48 362.88 C 598 364.09 598.53 365.36 599.05 366.68 C 599.58 368.01 600.12 369.41 600.67 370.88 C 601.23 372.36 601.82 373.96 602.45 375.7 Z M 597.79 369.62 C 597.28 368.25 596.78 366.92 596.28 365.63 C 595.79 364.35 595.27 363.11 594.74 361.93 C 594.18 363.11 593.66 364.35 593.16 365.63 C 592.66 366.92 592.17 368.25 591.68 369.62 Z M 608.91 374.07 C 611.31 374.07 612.51 373.25 612.51 371.61 C 612.51 371.1 612.4 370.67 612.19 370.32 C 611.98 369.96 611.69 369.65 611.32 369.39 C 610.96 369.13 610.55 368.91 610.08 368.72 C 609.62 368.53 609.12 368.34 608.6 368.15 C 608 367.95 607.43 367.71 606.9 367.45 C 606.36 367.19 605.9 366.88 605.5 366.53 C 605.11 366.18 604.8 365.75 604.57 365.26 C 604.34 364.77 604.22 364.18 604.22 363.49 C 604.22 362.05 604.71 360.93 605.69 360.13 C 606.67 359.32 608.02 358.92 609.74 358.92 C 610.73 358.92 611.64 359.03 612.45 359.24 C 613.26 359.45 613.86 359.69 614.24 359.94 L 613.5 361.81 C 613.17 361.6 612.68 361.4 612.02 361.2 C 611.37 361.01 610.61 360.91 609.74 360.91 C 609.3 360.91 608.89 360.96 608.51 361.05 C 608.13 361.15 607.8 361.29 607.51 361.48 C 607.23 361.67 607 361.91 606.84 362.2 C 606.67 362.49 606.59 362.83 606.59 363.23 C 606.59 363.67 606.68 364.04 606.85 364.34 C 607.02 364.64 607.27 364.9 607.59 365.13 C 607.9 365.36 608.27 365.57 608.68 365.76 C 609.1 365.95 609.57 366.14 610.07 366.33 C 610.78 366.61 611.43 366.9 612.02 367.18 C 612.61 367.46 613.13 367.8 613.56 368.2 C 613.99 368.59 614.33 369.06 614.57 369.61 C 614.8 370.15 614.92 370.81 614.92 371.58 C 614.92 373.02 614.4 374.12 613.35 374.89 C 612.3 375.67 610.82 376.06 608.91 376.06 C 608.26 376.06 607.67 376.01 607.12 375.93 C 606.58 375.84 606.09 375.74 605.67 375.62 C 605.24 375.5 604.88 375.37 604.57 375.24 C 604.26 375.1 604.02 374.99 603.85 374.89 L 604.53 373 C 604.89 373.21 605.45 373.44 606.19 373.69 C 606.93 373.94 607.84 374.07 608.91 374.07 Z M 621.92 374.07 C 624.32 374.07 625.52 373.25 625.52 371.61 C 625.52 371.1 625.42 370.67 625.2 370.32 C 624.99 369.96 624.7 369.65 624.34 369.39 C 623.98 369.13 623.56 368.91 623.1 368.72 C 622.63 368.53 622.14 368.34 621.62 368.15 C 621.02 367.95 620.45 367.71 619.91 367.45 C 619.38 367.19 618.91 366.88 618.52 366.53 C 618.12 366.18 617.81 365.75 617.58 365.26 C 617.35 364.77 617.24 364.18 617.24 363.49 C 617.24 362.05 617.73 360.93 618.71 360.13 C 619.68 359.32 621.03 358.92 622.75 358.92 C 623.75 358.92 624.65 359.03 625.46 359.24 C 626.28 359.45 626.87 359.69 627.25 359.94 L 626.52 361.81 C 626.18 361.6 625.69 361.4 625.04 361.2 C 624.38 361.01 623.62 360.91 622.75 360.91 C 622.31 360.91 621.9 360.96 621.52 361.05 C 621.14 361.15 620.81 361.29 620.53 361.48 C 620.25 361.67 620.02 361.91 619.86 362.2 C 619.69 362.49 619.61 362.83 619.61 363.23 C 619.61 363.67 619.69 364.04 619.87 364.34 C 620.04 364.64 620.28 364.9 620.6 365.13 C 620.92 365.36 621.28 365.57 621.7 365.76 C 622.12 365.95 622.58 366.14 623.09 366.33 C 623.79 366.61 624.45 366.9 625.04 367.18 C 625.63 367.46 626.14 367.8 626.58 368.2 C 627.01 368.59 627.35 369.06 627.58 369.61 C 627.82 370.15 627.94 370.81 627.94 371.58 C 627.94 373.02 627.41 374.12 626.36 374.89 C 625.31 375.67 623.83 376.06 621.92 376.06 C 621.28 376.06 620.68 376.01 620.14 375.93 C 619.59 375.84 619.11 375.74 618.68 375.62 C 618.26 375.5 617.89 375.37 617.58 375.24 C 617.27 375.1 617.03 374.99 616.86 374.89 L 617.55 373 C 617.91 373.21 618.46 373.44 619.2 373.69 C 619.95 373.94 620.85 374.07 621.92 374.07 Z M 631.13 359.3 L 633.43 359.3 L 633.43 375.7 L 631.13 375.7 Z M 649.16 375.7 C 648.82 375.12 648.42 374.46 647.97 373.74 C 647.52 373.01 647.03 372.26 646.51 371.48 C 645.99 370.69 645.45 369.9 644.89 369.1 C 644.33 368.29 643.77 367.52 643.22 366.77 C 642.67 366.02 642.13 365.31 641.61 364.65 C 641.09 363.99 640.61 363.4 640.17 362.9 L 640.17 375.7 L 637.92 375.7 L 637.92 359.3 L 639.74 359.3 C 640.49 360.09 641.28 361.01 642.12 362.06 C 642.97 363.11 643.8 364.19 644.63 365.3 C 645.46 366.41 646.24 367.5 646.97 368.58 C 647.71 369.65 648.33 370.6 648.83 371.44 L 648.83 359.3 L 651.08 359.3 L 651.08 375.7 Z M 665.59 367.63 L 667.88 367.63 L 667.88 375.3 C 667.69 375.36 667.42 375.43 667.07 375.51 C 666.71 375.59 666.3 375.67 665.83 375.75 C 665.37 375.83 664.86 375.89 664.31 375.95 C 663.76 376 663.2 376.03 662.63 376.03 C 661.48 376.03 660.43 375.84 659.48 375.46 C 658.53 375.08 657.72 374.53 657.04 373.81 C 656.36 373.08 655.84 372.19 655.47 371.13 C 655.1 370.08 654.91 368.86 654.91 367.49 C 654.91 366.12 655.12 364.9 655.54 363.83 C 655.96 362.77 656.52 361.87 657.23 361.15 C 657.94 360.42 658.77 359.87 659.73 359.49 C 660.68 359.11 661.71 358.92 662.79 358.92 C 663.53 358.92 664.19 358.97 664.77 359.06 C 665.35 359.16 665.84 359.27 666.25 359.39 C 666.66 359.52 666.99 359.65 667.25 359.77 C 667.51 359.9 667.69 359.99 667.79 360.06 L 667.05 361.97 C 666.6 361.67 665.99 361.43 665.23 361.23 C 664.47 361.03 663.7 360.93 662.91 360.93 C 662.08 360.93 661.31 361.08 660.63 361.38 C 659.94 361.68 659.36 362.12 658.88 362.68 C 658.4 363.25 658.02 363.94 657.75 364.75 C 657.49 365.57 657.35 366.48 657.35 367.49 C 657.35 368.47 657.47 369.36 657.69 370.16 C 657.92 370.97 658.27 371.66 658.74 372.23 C 659.2 372.81 659.78 373.25 660.46 373.57 C 661.15 373.89 661.96 374.04 662.89 374.04 C 663.55 374.04 664.12 374.01 664.58 373.94 C 665.05 373.87 665.38 373.8 665.59 373.74 Z M 671.9 375.7 L 671.9 359.3 L 681.91 359.3 L 681.91 361.26 L 674.2 361.26 L 674.2 366.14 L 681.06 366.14 L 681.06 368.06 L 674.2 368.06 L 674.2 373.74 L 682.51 373.74 L 682.51 375.7 Z M 697.08 375.7 C 696.74 375.12 696.34 374.46 695.89 373.74 C 695.44 373.01 694.95 372.26 694.43 371.48 C 693.91 370.69 693.37 369.9 692.81 369.1 C 692.25 368.29 691.7 367.52 691.14 366.77 C 690.59 366.02 690.05 365.31 689.53 364.65 C 689.01 363.99 688.53 363.4 688.09 362.9 L 688.09 375.7 L 685.84 375.7 L 685.84 359.3 L 687.66 359.3 C 688.41 360.09 689.2 361.01 690.04 362.06 C 690.89 363.11 691.72 364.19 692.55 365.3 C 693.38 366.41 694.16 367.5 694.89 368.58 C 695.63 369.65 696.25 370.6 696.75 371.44 L 696.75 359.3 L 699 359.3 L 699 375.7 Z"}];
+</script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- Staat ---------- */
+  var S = { L: 1080, B: 830, H: 1040, film: 'transparant', pallet: 'eur', palL: 1200, palB: 800, pack: 'stenen',
+            sides: [true, true, true, true], wLong: 450, wShort: 380, pos: 50, patch: true, pad: 35, ref: '' };
+  var logo = { kind: 'gerbri', aspect: GERBRI_ASPECT, name: 'Gerbri', canvas: null };
+
+  /* ---------- Merklogo in de kop ---------- */
+  (function () {
+    var p = GERBRI_PATHS.map(function (x) { return '<path class="' + (x.c === 'b' ? 'lb' : 'lg') + '" d="' + x.d + '"/>'; }).join('');
+    $('brand').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="181 232 519 145">' + p + '</svg>';
+  })();
+
+  function gerbriSvgString() {
+    var p = GERBRI_PATHS.map(function (x) { return '<path fill="' + (x.c === 'b' ? '#003963' : '#78c4af') + '" d="' + x.d + '"/>'; }).join('');
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="2076" height="580" viewBox="181 232 519 145">' + p + '</svg>';
+  }
+  function loadImg(src) {
+    return new Promise(function (res, rej) {
+      var i = new Image(); i.onload = function () { res(i); };
+      i.onerror = function () { rej(new Error('De afbeelding kon niet worden geladen.')); }; i.src = src;
+    });
+  }
+  async function makeGerbriCanvas() {
+    var img = await loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(gerbriSvgString()));
+    var cv = document.createElement('canvas'); cv.width = 2076; cv.height = 580;
+    cv.getContext('2d').drawImage(img, 0, 0, 2076, 580);
+    return cv;
+  }
+
+  /* ---------- Three.js ---------- */
+  var SC = 0.01; // 1 eenheid = 100 mm
+  var stage = $('stage');
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(35, 1, 0.1, 400);
+  var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  stage.appendChild(renderer.domElement);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a62, 0.7));
+  var sun = new THREE.DirectionalLight(0xffffff, 0.5); sun.position.set(8, 14, 6); scene.add(sun);
+  var grid = new THREE.GridHelper(60, 60, 0x8a8170, 0x8a8170);
+  grid.material.transparent = true; grid.material.opacity = 0.22; grid.position.y = -0.01; scene.add(grid);
+
+  var root = new THREE.Group(); scene.add(root);
+  var palletParts = [], packGroup, wrapGroup, dimGroup, logoTex = null;
+  var woods = [0xc9a26b, 0xbf9660, 0xd1ab75, 0xb98d58, 0xc69d66];
+  var woodMats = woods.map(function (c) { return new THREE.MeshLambertMaterial({ color: c }); });
+  var edgeMat = new THREE.LineBasicMaterial({ color: 0x4a3a22, transparent: true, opacity: 0.5 });
+  var disposables = [];
+
+  function clearRoot() {
+    while (root.children.length) root.remove(root.children[0]);
+    disposables.forEach(function (o) { if (o.dispose) o.dispose(); });
+    disposables = []; palletParts = [];
+  }
+  function addBox(parent, w, h, d, x, y, z, mat, layer) {
+    var geo = new THREE.BoxGeometry(w * SC, h * SC, d * SC); disposables.push(geo);
+    var m = new THREE.Mesh(geo, mat); m.position.set(x * SC, y * SC, z * SC);
+    var eg = new THREE.EdgesGeometry(geo); disposables.push(eg);
+    m.add(new THREE.LineSegments(eg, edgeMat));
+    m.userData = { baseY: y * SC, layer: layer };
+    parent.add(m); if (layer !== undefined) palletParts.push(m);
+    return m;
+  }
+
+  function palDims() {
+    if (S.pallet === 'eur') return { L: 1200, B: 800 };
+    if (S.pallet === 'ind') return { L: 1200, B: 1000 };
+    if (S.pallet === 'eigen') return { L: S.palL, B: S.palB };
+    return null;
+  }
+  function palH() { return S.pallet === 'geen' ? 0 : 144; }
+  function wrapBottom() { return Math.max(0, palH() - 24); }
+
+  function buildPallet(PL, PB) {
+    var T = 22, BH = 78, n = 0, zs = [-(PB / 2 - 72.5), 0, PB / 2 - 72.5], xs = [-(PL / 2 - 72.5), 0, PL / 2 - 72.5];
+    function mat() { return woodMats[n++ % woodMats.length]; }
+    zs.forEach(function (z) { addBox(root, PL, T, 145, 0, T / 2, z, mat(), 0); });
+    xs.forEach(function (x) { zs.forEach(function (z) { addBox(root, 145, BH, 145, x, T + BH / 2, z, mat(), 1); }); });
+    zs.forEach(function (z) { addBox(root, PL, T, 145, 0, T + BH + T / 2, z, mat(), 2); });
+    var widths = [145, 100, 145, 100, 145], sum = 0; widths.forEach(function (w) { sum += w; });
+    var gap = (PB - sum) / 4, cur = -PB / 2;
+    widths.forEach(function (w) { addBox(root, PL, T, w, 0, T + BH + T + T / 2, cur + w / 2, mat(), 3); cur += w + gap; });
+  }
+
+  function buildPack() {
+    packGroup = new THREE.Group(); root.add(packGroup);
+    var y0 = palH(), PLp = Math.max(100, S.L - 30), PBp = Math.max(100, S.B - 30);
+    var PHp = Math.max(50, wrapBottom() + S.H - 16 - y0);
+    if (S.pack === 'blok') {
+      var mat = new THREE.MeshLambertMaterial({ color: 0xb8905a }); disposables.push(mat);
+      addBox(packGroup, PLp, PHp, PBp, 0, y0 + PHp / 2, 0, mat);
+      return;
+    }
+    var BL = 210, BW = 100, BT = 50, GAP = 3;
+    var cols = Math.floor(PLp / BL), rows = Math.floor(PBp / BW), layers = Math.floor(PHp / BT);
+    if (cols < 1 || rows < 1 || layers < 1) return;
+    while (cols * rows * layers * 1.2 > 7000 && layers > 1) layers--;
+    var spots = [], ox = -cols * BL / 2, oz = -rows * BW / 2;
+    for (var l = 0; l < layers; l++) for (var r = 0; r < rows; r++) {
+      var z = oz + r * BW + BW / 2, y = y0 + l * BT + BT / 2;
+      if ((r + l) % 2 === 0) { for (var c = 0; c < cols; c++) spots.push([ox + c * BL + BL / 2, y, z, BL]); }
+      else {
+        spots.push([ox + BL / 4, y, z, BL / 2]);
+        for (var c2 = 0; c2 < cols - 1; c2++) spots.push([ox + BL / 2 + c2 * BL + BL / 2, y, z, BL]);
+        spots.push([ox + cols * BL - BL / 4, y, z, BL / 2]);
+      }
+    }
+    var geo = new THREE.BoxGeometry(1, 1, 1), im = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    disposables.push(geo, im);
+    var mesh = new THREE.InstancedMesh(geo, im, spots.length);
+    var m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p3 = new THREE.Vector3(), s3 = new THREE.Vector3(), col = new THREE.Color(), seed = 7;
+    function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    spots.forEach(function (sp, i) {
+      p3.set(sp[0] * SC, sp[1] * SC, sp[2] * SC); s3.set((sp[3] - GAP) * SC, (BT - GAP) * SC, (BW - GAP) * SC);
+      m4.compose(p3, q, s3); mesh.setMatrixAt(i, m4);
+      col.setHSL(0.03 + rnd() * 0.035, 0.5 + rnd() * 0.15, 0.30 + rnd() * 0.12); mesh.setColorAt(i, col);
+    });
+    mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true;
+    packGroup.add(mesh);
+  }
+
+  function roundedShape(w, d, r) {
+    var sh = new THREE.Shape(), x0 = -w / 2, z0 = -d / 2;
+    sh.moveTo(x0 + r, z0); sh.lineTo(x0 + w - r, z0); sh.quadraticCurveTo(x0 + w, z0, x0 + w, z0 + r);
+    sh.lineTo(x0 + w, z0 + d - r); sh.quadraticCurveTo(x0 + w, z0 + d, x0 + w - r, z0 + d);
+    sh.lineTo(x0 + r, z0 + d); sh.quadraticCurveTo(x0, z0 + d, x0, z0 + d - r);
+    sh.lineTo(x0, z0 + r); sh.quadraticCurveTo(x0, z0, x0 + r, z0);
+    return sh;
+  }
+  var FILM = { transparant: [0xd6ebf7, 0.16, 0.09], wit: [0xf5f4f4, 0.95, 0.05], blauw: [0x1f5f9a, 0.9, 0.05], groen: [0x78c4af, 0.9, 0.05], zwart: [0x1a1a1a, 0.93, 0.05] };
+  function wrapMesh(w, d, h, y0, rad, color, opacity) {
+    var geo = new THREE.ExtrudeGeometry(roundedShape(w * SC, d * SC, rad * SC), { depth: h * SC, bevelEnabled: false, curveSegments: 6 });
+    geo.rotateX(-Math.PI / 2);
+    var mat = new THREE.MeshPhongMaterial({ color: color, transparent: true, opacity: opacity, shininess: 110, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false });
+    disposables.push(geo, mat);
+    var m = new THREE.Mesh(geo, mat); m.position.y = y0 * SC; m.renderOrder = 2; return m;
+  }
+
+  function buildWrap() {
+    wrapGroup = new THREE.Group(); root.add(wrapGroup);
+    var f = FILM[S.film] || FILM.transparant, y0 = wrapBottom(), r = Math.min(60, S.B / 5, S.L / 5);
+    wrapGroup.add(wrapMesh(S.L, S.B, S.H, y0, r, f[0], f[1]));
+    var nb = 5, bh = S.H * 0.29, step = (S.H - bh) / (nb - 1);
+    for (var i = 0; i < nb; i++) wrapGroup.add(wrapMesh(S.L + 6 + (i % 2) * 6, S.B + 6 + (i % 2) * 6, bh, y0 + 8 + i * step * 0.98, r, f[0], f[2]));
+    buildLogos(y0);
+    buildDims(y0);
+  }
+
+  function buildLogos(y0) {
+    var lay = layoutOf(S, logo.aspect), off = 8; // mm buiten de folie
+    var matLogo = logoTex ? new THREE.MeshBasicMaterial({ map: logoTex, transparent: true, depthWrite: false }) : null;
+    var matPatch = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.97, depthWrite: false, side: THREE.DoubleSide });
+    if (matLogo) disposables.push(matLogo); disposables.push(matPatch);
+    lay.items.forEach(function (it) {
+      var g = new THREE.Group();
+      if (it.pad > 0) {
+        var sg = new THREE.ShapeGeometry(roundedShape((it.w + 2 * it.pad) * SC, (it.h + 2 * it.pad) * SC, Math.min(8, it.pad) * SC)); disposables.push(sg);
+        var pm = new THREE.Mesh(sg, matPatch); pm.renderOrder = 3; g.add(pm);
+      }
+      if (matLogo) {
+        var pg = new THREE.PlaneGeometry(it.w * SC, it.h * SC); disposables.push(pg);
+        var lm = new THREE.Mesh(pg, matLogo); lm.position.z = 0.015; lm.renderOrder = 4; g.add(lm);
+      }
+      var y = (y0 + it.cy) * SC;
+      if (it.i === 0) { g.position.set(0, y, S.B / 2 * SC + off * SC); }
+      else if (it.i === 1) { g.position.set(S.L / 2 * SC + off * SC, y, 0); g.rotation.y = Math.PI / 2; }
+      else if (it.i === 2) { g.position.set(0, y, -S.B / 2 * SC - off * SC); g.rotation.y = Math.PI; }
+      else { g.position.set(-S.L / 2 * SC - off * SC, y, 0); g.rotation.y = -Math.PI / 2; }
+      wrapGroup.add(g);
+    });
+  }
+
+  function textSprite(text) {
+    var c = document.createElement('canvas'); c.width = 256; c.height = 80;
+    var g = c.getContext('2d'); g.fillStyle = 'rgba(0,57,99,0.94)'; g.fillRect(0, 0, 256, 80);
+    g.fillStyle = '#fff'; g.font = '500 42px Roboto, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 42);
+    var tex = new THREE.CanvasTexture(c), mat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+    disposables.push(tex, mat);
+    var sp = new THREE.Sprite(mat); sp.scale.set(2.2, 0.69, 1); sp.renderOrder = 10; return sp;
+  }
+  function dline(a, b) {
+    var geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a[0], a[1], a[2]), new THREE.Vector3(b[0], b[1], b[2])]);
+    var mat = new THREE.LineBasicMaterial({ color: 0x78c4af, depthTest: false }); disposables.push(geo, mat);
+    var l = new THREE.Line(geo, mat); l.renderOrder = 9; return l;
+  }
+  function buildDims(y0) {
+    dimGroup = new THREE.Group(); dimGroup.visible = showDims; wrapGroup.add(dimGroup);
+    var hx = S.L * SC / 2, hz = S.B * SC / 2, top = (y0 + S.H) * SC + 0.2, bot = y0 * SC;
+    dimGroup.add(dline([-hx, top, hz + 0.6], [hx, top, hz + 0.6]));
+    var a = textSprite(S.L + ' mm'); a.position.set(0, top + 0.5, hz + 0.6); dimGroup.add(a);
+    dimGroup.add(dline([hx + 0.6, top, -hz], [hx + 0.6, top, hz]));
+    var b = textSprite(S.B + ' mm'); b.position.set(hx + 0.6, top + 0.5, 0); dimGroup.add(b);
+    dimGroup.add(dline([-hx - 0.6, bot, hz + 0.6], [-hx - 0.6, bot + S.H * SC, hz + 0.6]));
+    var c = textSprite(S.H + ' mm'); c.position.set(-hx - 1.6, bot + S.H * SC / 2, hz + 0.6); dimGroup.add(c);
+  }
+
+  var showDims = false;
+  function rebuild() {
+    clearRoot();
+    var pd = palDims();
+    if (pd) buildPallet(pd.L, pd.B);
+    buildPack(); buildWrap();
+    scene.children.forEach(function () {});
+    syncLogoTexture();
+  }
+  function syncLogoTexture() {}
+
+  /* ---------- Camera ---------- */
+  var theta = -0.75, phi = 1.2, radius = 32, targetY = 5.6;
+  var autoSpin = true, explode = 0, curExplode = 0;
+  function fitCamera() {
+    var mx = Math.max(S.L, S.B, S.H + palH());
+    radius = Math.max(14, mx / 100 * 2.9); theta = -0.75; phi = 1.2;
+    targetY = (wrapBottom() + S.H / 2) / 100;
+  }
+  function updateCamera() {
+    phi = Math.max(0.08, Math.min(Math.PI / 2 - 0.02, phi));
+    radius = Math.max(8, Math.min(120, radius));
+    camera.position.set(radius * Math.sin(phi) * Math.sin(theta), targetY + radius * Math.cos(phi), radius * Math.sin(phi) * Math.cos(theta));
+    camera.lookAt(0, targetY, 0);
+  }
+  function resize() {
+    var w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  var pointers = {}, lastPinch = 0;
+  stage.addEventListener('pointerdown', function (e) {
+    stage.setPointerCapture(e.pointerId); pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    autoSpin = false; $('spin').setAttribute('aria-pressed', 'false');
+  });
+  stage.addEventListener('pointermove', function (e) {
+    var p = pointers[e.pointerId]; if (!p) return;
+    var ids = Object.keys(pointers);
+    if (ids.length === 1) { theta -= (e.clientX - p.x) * 0.008; phi -= (e.clientY - p.y) * 0.008; }
+    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (ids.length === 2) {
+      var a = pointers[ids[0]], b = pointers[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (lastPinch) radius *= lastPinch / d; lastPinch = d;
+    }
+  });
+  function endPtr(e) { delete pointers[e.pointerId]; lastPinch = 0; }
+  stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
+  stage.addEventListener('wheel', function (e) { e.preventDefault(); radius *= 1 + Math.sign(e.deltaY) * 0.08; }, { passive: false });
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { autoSpin = false; $('spin').setAttribute('aria-pressed', 'false'); }
+
+  function frame() {
+    requestAnimationFrame(frame);
+    if (autoSpin) theta += 0.004;
+    curExplode += (explode - curExplode) * 0.15;
+    palletParts.forEach(function (m) { m.position.y = m.userData.baseY + m.userData.layer * 0.9 * curExplode; });
+    if (packGroup) packGroup.position.y = 4 * 0.9 * curExplode;
+    if (wrapGroup) wrapGroup.position.y = (S.H / 100 + 3) * curExplode;
+    updateCamera(); renderer.render(scene, camera);
+  }
+
+  /* ---------- Afgerolde hoes (2D) ---------- */
+  var FLATBG = { transparant: '#e4eef4', wit: '#ffffff', blauw: '#1f5f9a', groen: '#78c4af', zwart: '#222222' };
+  function drawFlat(cv, widthPx) {
+    var lay = layoutOf(S, logo.aspect), M = 50, W = lay.AW + 2 * M, H = lay.AH + 2 * M, sc = widthPx / W;
+    cv.width = widthPx; cv.height = Math.round(H * sc);
+    var g = cv.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, cv.width, cv.height);
+    g.fillStyle = FLATBG[S.film] || '#e4eef4'; g.fillRect(M * sc, M * sc, lay.AW * sc, lay.AH * sc);
+    g.strokeStyle = '#8a98a6'; g.lineWidth = Math.max(1, sc * 1.5); g.strokeRect(M * sc, M * sc, lay.AW * sc, lay.AH * sc);
+    g.setLineDash([sc * 12, sc * 10]); g.strokeStyle = '#6b7a88';
+    lay.panels.slice(1).forEach(function (p) { g.beginPath(); g.moveTo((M + p.x0) * sc, M * sc); g.lineTo((M + p.x0) * sc, (M + lay.AH) * sc); g.stroke(); });
+    g.setLineDash([]);
+    var fs = Math.max(11, widthPx / 85);
+    g.font = '400 ' + fs + 'px Roboto, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#44566a';
+    lay.panels.forEach(function (p) { g.fillText(p.name + ' ' + p.w + ' mm', (M + p.x0 + p.w / 2) * sc, (M / 2) * sc); });
+    lay.items.forEach(function (it) {
+      var cx = (M + it.cx) * sc, cy = (M + lay.AH - it.cy) * sc, w = it.w * sc, h = it.h * sc, pd = it.pad * sc;
+      if (it.pad > 0) {
+        g.fillStyle = '#ffffff'; g.strokeStyle = '#b9c4cf'; g.lineWidth = 1;
+        var x = cx - w / 2 - pd, y = cy - h / 2 - pd, ww = w + 2 * pd, hh = h + 2 * pd, r = Math.min(8 * sc, pd);
+        g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + ww, y, x + ww, y + hh, r); g.arcTo(x + ww, y + hh, x, y + hh, r);
+        g.arcTo(x, y + hh, x, y, r); g.arcTo(x, y, x + ww, y, r); g.closePath(); g.fill(); g.stroke();
+      }
+      if (logo.canvas) g.drawImage(logo.canvas, cx - w / 2, cy - h / 2, w, h);
+    });
+    $('flatinfo').textContent = 'Afgerolde omtrek ' + lay.AW + ' × ' + lay.AH + ' mm. Het wit vlak wordt als steunkleur White meegeleverd.';
+  }
+
+  /* ---------- Logo laden ---------- */
+  function readFile(file, as) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = function () { rej(new Error('Het bestand kon niet worden gelezen.')); };
+      as === 'text' ? r.readAsText(file) : r.readAsDataURL(file);
+    });
+  }
+  async function processLogo(file) {
+    var isSvg = /svg/i.test(file.type) || /\.svg$/i.test(file.name), src;
+    if (isSvg) {
+      var txt = await readFile(file, 'text');
+      var doc = new DOMParser().parseFromString(txt, 'image/svg+xml'), rootEl = doc.documentElement;
+      if (!rootEl || rootEl.nodeName.toLowerCase() !== 'svg') throw new Error('Dit SVG-bestand kan niet worden gelezen.');
+      var vb = (rootEl.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+      var w = parseFloat(rootEl.getAttribute('width')), h = parseFloat(rootEl.getAttribute('height'));
+      if (!(w > 0 && h > 0)) { if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) { w = vb[2]; h = vb[3]; } else { w = 1000; h = 1000; } }
+      if (!rootEl.getAttribute('viewBox')) rootEl.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      var k = 4000 / Math.max(w, h);
+      rootEl.setAttribute('width', Math.round(w * k)); rootEl.setAttribute('height', Math.round(h * k));
+      src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(rootEl));
+    } else { src = await readFile(file, 'url'); }
+    var img = await loadImg(src), iw = img.naturalWidth, ih = img.naturalHeight;
+    if (!iw || !ih) throw new Error('De afbeelding heeft geen bekende afmetingen.');
+    var kk = Math.min(1, 4000 / Math.max(iw, ih)), cw = Math.max(1, Math.round(iw * kk)), ch = Math.max(1, Math.round(ih * kk));
+    var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+    var g = cv.getContext('2d'); g.drawImage(img, 0, 0, cw, ch);
+    var d = g.getImageData(0, 0, cw, ch).data, hasAlpha = false, i, x, y;
+    for (i = 3; i < d.length; i += 4) if (d[i] < 250) { hasAlpha = true; break; }
+    var x0 = cw, y0 = ch, x1 = -1, y1 = -1;
+    for (y = 0; y < ch; y++) for (x = 0; x < cw; x++) {
+      i = (y * cw + x) * 4;
+      var ink = hasAlpha ? d[i + 3] > 16 : (d[i] < 245 || d[i + 1] < 245 || d[i + 2] < 245);
+      if (ink) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < x0 || y1 < y0) { x0 = 0; y0 = 0; x1 = cw - 1; y1 = ch - 1; }
+    var tw = x1 - x0 + 1, th = y1 - y0 + 1, out = document.createElement('canvas'); out.width = tw; out.height = th;
+    out.getContext('2d').drawImage(cv, x0, y0, tw, th, 0, 0, tw, th);
+    return { kind: 'raster', aspect: tw / th, w: tw, h: th, canvas: out, name: file.name };
+  }
+  function makeTexture() {
+    if (logoTex) { logoTex.dispose(); logoTex = null; }
+    if (!logo.canvas) return;
+    var src = logo.canvas;
+    if (src.width > 2048 || src.height > 2048) {
+      var k = 2048 / Math.max(src.width, src.height), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(src.width * k)); c.height = Math.max(1, Math.round(src.height * k));
+      c.getContext('2d').drawImage(src, 0, 0, c.width, c.height); src = c;
+    }
+    logoTex = new THREE.CanvasTexture(src);
+    logoTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  }
+  function updateLogoInfo() {
+    var el = $('loginfo');
+    if (logo.kind === 'gerbri') { el.className = 'note'; el.textContent = 'Voorbeeldlogo Gerbri (vector).'; return; }
+    var lay = layoutOf(S, logo.aspect), it = lay.items[0], dpi = it ? Math.round(logo.w / (it.w / 25.4)) : 0;
+    var q = dpi >= 100 ? 'goede' : dpi >= 50 ? 'redelijke' : 'lage';
+    el.className = 'note' + (dpi && dpi < 50 ? ' warn' : '');
+    el.textContent = logo.name + ': ' + logo.w + ' × ' + logo.h + ' px' + (it ? ', ongeveer ' + dpi + ' dpi op ' + Math.round(it.w) + ' mm breed (' + q + ' resolutie).' : '.');
+    if (dpi && dpi < 50) el.textContent += ' Gebruik liever een groter bestand of een SVG.';
+  }
+
+  /* ---------- Invoer ---------- */
+  var pending = false;
+  function refresh(full) {
+    if (pending) return; pending = true;
+    requestAnimationFrame(function () {
+      pending = false; rebuild(); drawFlat($('flat'), 1400); updateLogoInfo();
+      if (full) fitCamera();
+    });
+  }
+  function num(id, key, min, max) {
+    var el = $(id); el.value = S[key];
+    el.addEventListener('input', function () {
+      var v = parseFloat(el.value); if (!isFinite(v)) return;
+      S[key] = Math.max(min, Math.min(max, v)); refresh(false);
+    });
+    el.addEventListener('change', function () { el.value = S[key]; });
+  }
+  num('L', 'L', 300, 2500); num('B', 'B', 300, 2500); num('H', 'H', 300, 3000); num('palL', 'palL', 400, 2500); num('palB', 'palB', 400, 2500);
+  function range(id, key, vid) {
+    var el = $(id); el.value = S[key]; $(vid).textContent = S[key];
+    el.addEventListener('input', function () { S[key] = parseFloat(el.value); $(vid).textContent = S[key]; refresh(false); });
+  }
+  range('wLong', 'wLong', 'wLongV'); range('wShort', 'wShort', 'wShortV'); range('pos', 'pos', 'posV'); range('pad', 'pad', 'padV');
+  $('film').addEventListener('change', function () { S.film = this.value; refresh(false); });
+  $('pack').addEventListener('change', function () { S.pack = this.value; refresh(false); });
+  $('pallet').addEventListener('change', function () {
+    S.pallet = this.value; $('palcustom').classList.toggle('hide', S.pallet !== 'eigen'); refresh(true);
+  });
+  $('patch').addEventListener('change', function () { S.patch = this.checked; $('padrow').classList.toggle('hide', !S.patch); refresh(false); });
+  Array.prototype.forEach.call(document.querySelectorAll('.side'), function (c) {
+    c.addEventListener('change', function () { S.sides[+c.dataset.i] = c.checked; refresh(false); });
+  });
+  $('ref').addEventListener('input', function () { S.ref = this.value.trim(); });
+  $('explode').addEventListener('input', function () { explode = this.value / 100; });
+  $('spin').addEventListener('click', function () { autoSpin = !autoSpin; this.setAttribute('aria-pressed', String(autoSpin)); });
+  $('dims').addEventListener('click', function () { showDims = !showDims; this.setAttribute('aria-pressed', String(showDims)); if (dimGroup) dimGroup.visible = showDims; });
+  $('reset').addEventListener('click', function () { fitCamera(); $('explode').value = 0; explode = 0; });
+  $('pick').addEventListener('click', function () { $('file').click(); });
+
+  function status(msg, bad) { var s = $('status'); s.textContent = msg; s.className = bad ? 'warn' : ''; }
+  $('file').addEventListener('change', async function () {
+    var f = this.files && this.files[0]; this.value = ''; if (!f) return;
+    status('Logo wordt verwerkt…');
+    try { logo = await processLogo(f); makeTexture(); refresh(false); status('Logo geladen: ' + f.name + '.'); }
+    catch (err) { status(err.message || 'Het logo kon niet worden geladen.', true); }
+  });
+  $('demo').addEventListener('click', async function () {
+    logo = { kind: 'gerbri', aspect: GERBRI_ASPECT, name: 'Gerbri', canvas: await makeGerbriCanvas() };
+    makeTexture(); refresh(false); status('Voorbeeldlogo Gerbri gebruikt.');
+  });
+
+  /* ---------- Download ---------- */
+  var dlCap = null, capChecked = false;
+  async function getDownloads() {
+    if (capChecked) return dlCap; capChecked = true;
+    try { dlCap = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null; } catch (e) { dlCap = null; }
+    return dlCap;
+  }
+  function epsLogo() {
+    if (logo.kind === 'gerbri') return { kind: 'gerbri', aspect: logo.aspect, paths: GERBRI_PATHS, name: 'Gerbri' };
+    var cv = logo.canvas, g = cv.getContext('2d'), d = g.getImageData(0, 0, cv.width, cv.height).data;
+    var maxSide = 3200, k = Math.min(1, maxSide / Math.max(cv.width, cv.height)), w = Math.max(1, Math.round(cv.width * k)), h = Math.max(1, Math.round(cv.height * k));
+    if (k < 1) { var c2 = document.createElement('canvas'); c2.width = w; c2.height = h; c2.getContext('2d').drawImage(cv, 0, 0, w, h); d = c2.getContext('2d').getImageData(0, 0, w, h).data; }
+    var rgb = new Uint8Array(w * h * 3);
+    for (var i = 0, j = 0; i < d.length; i += 4, j += 3) {
+      var a = d[i + 3] / 255; rgb[j] = d[i] * a + 255 * (1 - a); rgb[j + 1] = d[i + 1] * a + 255 * (1 - a); rgb[j + 2] = d[i + 2] * a + 255 * (1 - a);
+    }
+    return { kind: 'raster', aspect: logo.aspect, w: w, h: h, rgb: rgb, name: logo.name };
+  }
+  function fileBase() {
+    var b = (S.ref || 'krimphoes').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'krimphoes';
+    return 'krimphoes-' + b + '-' + S.L + 'x' + S.B + 'x' + S.H;
+  }
+  function pngBlob() {
+    var c = document.createElement('canvas'); drawFlat(c, 3000);
+    return new Promise(function (res) { c.toBlob(res, 'image/png'); });
+  }
+  function anchorSave(blob, name) {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+  async function saveWith(dl, name, data) {
+    try { await dl.save({ filename: name, data: data }); status('Opgeslagen: ' + name); }
+    catch (e) {
+      if (e && e.code === 'declined') status('Download geannuleerd.');
+      else status('Opslaan is niet gelukt (' + ((e && (e.code || e.message)) || 'onbekende fout') + ').', true);
+    }
+  }
+  $('dl').addEventListener('click', async function () {
+    var btn = this; btn.disabled = true; status('EPS wordt gemaakt…');
+    try {
+      if (!S.sides.some(Boolean)) { status('Zet minstens één zijde aan voor het logo.', true); return; }
+      var when = new Date(), lg = epsLogo(), eps = await buildEps(S, lg, deflateZlib, when);
+      var epsBytes = new TextEncoder().encode(eps), spec = new TextEncoder().encode(buildSpec(S, lg, when));
+      var png = new Uint8Array(await (await pngBlob()).arrayBuffer());
+      var dl = await getDownloads(), base = fileBase();
+      if (dl) {
+        var zip = makeZip([{ name: base + '.eps', data: epsBytes }, { name: base + '-voorbeeld.png', data: png }, { name: base + '-specificatie.txt', data: spec }], when);
+        await saveWith(dl, base + '.zip', zip);
+      } else {
+        anchorSave(new Blob([epsBytes], { type: 'application/postscript' }), base + '.eps'); status('EPS-bestand gedownload: ' + base + '.eps');
+      }
+    } catch (err) { status('Het EPS-bestand kon niet worden gemaakt: ' + (err.message || err), true); }
+    finally { btn.disabled = false; }
+  });
+  $('dlpng').addEventListener('click', async function () {
+    var b = await pngBlob(), dl = await getDownloads(), name = fileBase() + '-voorbeeld.png';
+    if (dl) await saveWith(dl, name, b); else anchorSave(b, name);
+  });
+  getDownloads().then(function (d) {
+    $('dlnote').textContent = d ? 'U krijgt een ZIP met het EPS-bestand, een PNG-voorbeeld en een specificatie. Pak de ZIP uit en stuur het EPS-bestand naar de leverancier.' : 'U krijgt het EPS-bestand rechtstreeks.';
+  });
+
+  /* ---------- Start ---------- */
+  $('padV').textContent = S.pad;
+  resize(); fitCamera(); rebuild(); drawFlat($('flat'), 1400); updateLogoInfo(); frame();
+  makeGerbriCanvas().then(function (cv) { logo.canvas = cv; makeTexture(); rebuild(); drawFlat($('flat'), 1400); });
+  new ResizeObserver(resize).observe(stage);
+})();
+</script>
+</body>
+</html>
