@@ -92,6 +92,12 @@
   #status { min-height: 1.4em; font-size: 14px; margin-top: 10px; }
   .hide { display: none !important; }
   .val { color: var(--ink); font-weight: 500; }
+  .lc { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px 8px; align-items: center; margin-top: 8px; font-size: 14px; }
+  .lc .sw { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); }
+  .lc select { width: auto; padding: 4px 6px; }
+  .lc .cmyk { grid-column: 2 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .lc .cmyk label { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+  .lc .cmyk input { padding: 4px 6px; }
 </style>
 </head>
 <body>
@@ -129,7 +135,8 @@
       </div>
       <input id="file" type="file" accept=".png,.jpg,.jpeg,.webp,.gif,.svg,image/*" class="hide">
       <p class="note" id="loginfo">Voorbeeldlogo Gerbri (vector).</p>
-      <p class="note">PNG, JPG of SVG. Witte of lege randen worden automatisch weggesneden.</p>
+      <p class="note">PNG, JPG of SVG. Witte of lege randen worden automatisch weggesneden. Een SVG blijft vector in het EPS-bestand.</p>
+      <div id="logocolors" class="hide"></div>
     </fieldset>
 
     <fieldset>
@@ -220,6 +227,104 @@ function pathToPS(d) {
     i += n; if (cmd === 'M') cmd = 'L';
   }
   return out.join('\n');
+}
+
+/* ---------- SVG-logo als vector: paden naar absolute M/L/C/Z ---------- */
+function arcToCubics(x1, y1, rx, ry, rotDeg, large, sweep, x2, y2) {
+  if (x1 === x2 && y1 === y2) return [];
+  rx = Math.abs(rx); ry = Math.abs(ry);
+  if (!rx || !ry) return [['L', x2, y2]];
+  var phi = rotDeg * Math.PI / 180, cos = Math.cos(phi), sin = Math.sin(phi);
+  var dx = (x1 - x2) / 2, dy = (y1 - y2) / 2, x1p = cos * dx + sin * dy, y1p = -sin * dx + cos * dy;
+  var lam = x1p * x1p / (rx * rx) + y1p * y1p / (ry * ry);
+  if (lam > 1) { rx *= Math.sqrt(lam); ry *= Math.sqrt(lam); }
+  var rx2 = rx * rx, ry2 = ry * ry, den = rx2 * y1p * y1p + ry2 * x1p * x1p;
+  var co = Math.sqrt(Math.max(0, (rx2 * ry2 - den) / den)) * (large === sweep ? -1 : 1);
+  var cxp = co * rx * y1p / ry, cyp = -co * ry * x1p / rx;
+  var cx = cos * cxp - sin * cyp + (x1 + x2) / 2, cy = sin * cxp + cos * cyp + (y1 + y2) / 2;
+  function ang(ux, uy, vx, vy) { return Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy); }
+  var ux = (x1p - cxp) / rx, uy = (y1p - cyp) / ry, t1 = ang(1, 0, ux, uy), dt = ang(ux, uy, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+  if (!sweep && dt > 0) dt -= 2 * Math.PI; else if (sweep && dt < 0) dt += 2 * Math.PI;
+  var n = Math.ceil(Math.abs(dt) / (Math.PI / 2) - 1e-9);
+  if (n < 1) return [['L', x2, y2]];
+  var step = dt / n, k = 4 / 3 * Math.tan(step / 4), out = [];
+  for (var i = 0; i < n; i++) {
+    var a1 = t1 + i * step, a2 = a1 + step, c1 = Math.cos(a1), s1 = Math.sin(a1), c2 = Math.cos(a2), s2 = Math.sin(a2), seg = ['C'];
+    [[c1 - k * s1, s1 + k * c1], [c2 + k * s2, s2 - k * c2], [c2, s2]].forEach(function (q) {
+      var px = q[0] * rx, py = q[1] * ry; seg.push(cos * px - sin * py + cx, sin * px + cos * py + cy);
+    });
+    out.push(seg);
+  }
+  out[n - 1][5] = x2; out[n - 1][6] = y2;
+  return out;
+}
+
+function parsePathData(d) {
+  var segs = [], i = 0, n = d.length, cmd = '', x = 0, y = 0, sx = 0, sy = 0, c2x = 0, c2y = 0, qx = 0, qy = 0, lastC = false, lastQ = false;
+  function ws() { while (i < n && /[\s,]/.test(d[i])) i++; }
+  function num() {
+    ws(); var m = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/.exec(d.slice(i, i + 64));
+    if (!m) throw new Error('Ongeldig pad in het SVG-bestand.');
+    i += m[0].length; return parseFloat(m[0]);
+  }
+  function flag() { ws(); var c = d[i++]; if (c !== '0' && c !== '1') throw new Error('Ongeldig pad in het SVG-bestand.'); return c === '1'; }
+  for (;;) {
+    ws(); if (i >= n) break;
+    if (/[MmZzLlHhVvCcSsQqTtAa]/.test(d[i])) cmd = d[i++];
+    else if (!cmd || cmd === 'Z' || cmd === 'z') throw new Error('Ongeldig pad in het SVG-bestand.');
+    var rel = cmd !== cmd.toUpperCase(), C = cmd.toUpperCase(), ox = rel ? x : 0, oy = rel ? y : 0, isC = false, isQ = false, a, b, e, f;
+    if (C === 'Z') { segs.push(['Z']); x = sx; y = sy; }
+    else if (C === 'M') { x = ox + num(); y = oy + num(); sx = x; sy = y; segs.push(['M', x, y]); cmd = rel ? 'l' : 'L'; }
+    else if (C === 'L') { x = ox + num(); y = oy + num(); segs.push(['L', x, y]); }
+    else if (C === 'H') { x = ox + num(); segs.push(['L', x, y]); }
+    else if (C === 'V') { y = oy + num(); segs.push(['L', x, y]); }
+    else if (C === 'C' || C === 'S') {
+      if (C === 'C') { a = ox + num(); b = oy + num(); } else { a = lastC ? 2 * x - c2x : x; b = lastC ? 2 * y - c2y : y; }
+      c2x = ox + num(); c2y = oy + num(); x = ox + num(); y = oy + num();
+      segs.push(['C', a, b, c2x, c2y, x, y]); isC = true;
+    } else if (C === 'Q' || C === 'T') {
+      if (C === 'Q') { qx = ox + num(); qy = oy + num(); } else { qx = lastQ ? 2 * x - qx : x; qy = lastQ ? 2 * y - qy : y; }
+      e = ox + num(); f = oy + num();
+      segs.push(['C', x + 2 / 3 * (qx - x), y + 2 / 3 * (qy - y), e + 2 / 3 * (qx - e), f + 2 / 3 * (qy - f), e, f]);
+      x = e; y = f; isQ = true;
+    } else if (C === 'A') {
+      var rx = num(), ry = num(), rot = num(), large = flag(), sweep = flag();
+      e = ox + num(); f = oy + num();
+      Array.prototype.push.apply(segs, arcToCubics(x, y, rx, ry, rot, large, sweep, e, f));
+      x = e; y = f;
+    }
+    lastC = isC; lastQ = isQ;
+  }
+  return segs;
+}
+
+function psNum(v) { return String(Number(v.toPrecision(8))); }
+function segsToPS(segs) {
+  return segs.map(function (s) {
+    if (s[0] === 'Z') return 'closepath';
+    return s.slice(1).map(psNum).join(' ') + (s[0] === 'M' ? ' moveto' : s[0] === 'L' ? ' lineto' : ' curveto');
+  }).join('\n');
+}
+function vecColorPS(c) {
+  if (c.mode === 'white') return 'CSWit setcolorspace 1 setcolor';
+  return c.cmyk.map(function (v) { return psNum(v / 100); }).join(' ') + ' setcmykcolor';
+}
+/* vec.ops: {t:'clip', m, d, eo} | {t:'end'} | {t:'shape', m, d, eo, fill, stroke, sw, join, cap, miter, dash, dashOff} */
+function vectorToPS(vec) {
+  var cols = vec.colors;
+  function paint(i) { return i !== null && cols[i].mode !== 'omit'; }
+  return vec.ops.map(function (op) {
+    if (op.t === 'end') return 'grestore';
+    var head = '[' + op.m.map(psNum).join(' ') + '] concat newpath\n' + segsToPS(op.d) + '\n';
+    if (op.t === 'clip') return 'gsave matrix currentmatrix ' + head + (op.eo ? 'eoclip' : 'clip') + ' newpath setmatrix';
+    var f = paint(op.fill), s = paint(op.stroke);
+    if (!f && !s) return '';
+    var ps = 'gsave ' + head;
+    if (f) ps += (s ? 'gsave ' : '') + vecColorPS(cols[op.fill]) + (op.eo ? ' eofill' : ' fill') + (s ? ' grestore\n' : '\n');
+    if (s) ps += vecColorPS(cols[op.stroke]) + ' ' + psNum(op.sw) + ' setlinewidth ' + op.join + ' setlinejoin ' + op.cap + ' setlinecap ' +
+      psNum(op.miter) + ' setmiterlimit [' + op.dash.map(psNum).join(' ') + '] ' + psNum(op.dashOff) + ' setdash stroke\n';
+    return ps + 'grestore';
+  }).filter(Boolean).join('\n');
 }
 
 function panelsOf(s) {
@@ -314,7 +419,13 @@ async function buildEps(s, logo, deflate, when) {
       out.push(roundRectPS(cx - it.w / 2 - it.pad, cy - it.h / 2 - it.pad, cx + it.w / 2 + it.pad, cy + it.h / 2 + it.pad, Math.min(8, it.pad)) +
         ' CSWit setcolorspace 1 setcolor fill');
     }
-    if (!raster) {
+    if (logo.kind === 'vector') {
+      var v = logo.vec;
+      out.push('gsave ' + (cx - it.w / 2).toFixed(3) + ' ' + (cy + it.h / 2).toFixed(3) + ' translate ' + psNum(it.w / v.tw) + ' ' + psNum(-it.h / v.th) + ' scale ' +
+        (-v.x0) + ' ' + (-v.y0) + ' translate ' + v.x0 + ' ' + v.y0 + ' ' + v.tw + ' ' + v.th + ' rectclip ' + psNum(v.k) + ' dup scale');
+      out.push(vectorToPS(v));
+      out.push('grestore');
+    } else if (!raster) {
       var k = it.w / (GERBRI_BOX.x1 - GERBRI_BOX.x0);
       out.push('gsave ' + cx.toFixed(3) + ' ' + cy.toFixed(3) + ' translate ' + k.toFixed(6) + ' ' + (-k).toFixed(6) + ' scale ' +
         (-(GERBRI_BOX.x0 + GERBRI_BOX.x1) / 2) + ' ' + (-(GERBRI_BOX.y0 + GERBRI_BOX.y1) / 2) + ' translate');
@@ -375,7 +486,12 @@ function buildSpec(s, logo, when) {
     L.push('  ' + it.name + ': midden op ' + Math.round(it.cx) + ' mm van links en ' + Math.round(it.cy) + ' mm van onder, logo ' +
       Math.round(it.w) + ' x ' + Math.round(it.h) + ' mm' + (it.pad ? ', wit vlak met ' + it.pad + ' mm marge' : ', zonder wit vlak'));
   });
-  L.push('', 'Logo: ' + (logo.kind === 'raster' ? (logo.name || 'afbeelding') + ', ' + logo.w + ' x ' + logo.h + ' pixels (rasterafbeelding, RGB)' : 'Gerbri, vectorlogo (CMYK)'));
+  L.push('', 'Logo: ' + (logo.kind === 'vector' ? (logo.name || 'logo') + ', vectorlogo uit SVG' :
+    logo.kind === 'raster' ? (logo.name || 'afbeelding') + ', ' + logo.w + ' x ' + logo.h + ' pixels (rasterafbeelding, RGB)' : 'Gerbri, vectorlogo (CMYK)'));
+  if (logo.kind === 'vector') logo.vec.colors.forEach(function (c) {
+    L.push('  Kleur ' + c.hex + ': ' + (c.mode === 'white' ? 'steunkleur White' : c.mode === 'omit' ? 'niet gedrukt' :
+      'C' + c.cmyk[0] + ' M' + c.cmyk[1] + ' Y' + c.cmyk[2] + ' K' + c.cmyk[3]));
+  });
   L.push('Het witte vlak staat als steunkleur "White" in het bestand (witte onderdruk).');
   L.push('Hulpmarkeringen (snijmerken, vouwmerken, labels) staan buiten de afbeelding en zijn niet bedoeld om te printen.');
   return L.join('\r\n') + '\r\n';
@@ -753,7 +869,153 @@ var GERBRI_PATHS = [{"c":"b","d":"M 395 337 L 404 337 C 408 337 411 338 413 339 
     if (x1 < x0 || y1 < y0) { x0 = 0; y0 = 0; x1 = cw - 1; y1 = ch - 1; }
     var tw = x1 - x0 + 1, th = y1 - y0 + 1, out = document.createElement('canvas'); out.width = tw; out.height = th;
     out.getContext('2d').drawImage(cv, x0, y0, tw, th, 0, 0, tw, th);
-    return { kind: 'raster', aspect: tw / th, w: tw, h: th, canvas: out, name: file.name };
+    var res = { kind: 'raster', aspect: tw / th, w: tw, h: th, canvas: out, name: file.name };
+    if (isSvg) {
+      try { res.vec = extractVector(rootEl, kk, x0, y0, tw, th); }
+      catch (e) { res.vecErr = e.vec ? e.message : 'het SVG-bestand kon niet als vector worden gelezen'; }
+    }
+    return res;
+  }
+
+  /* ---------- SVG-logo als vector voor het EPS ---------- */
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var VEC_SKIP = { defs: 1, clipPath: 1, mask: 1, symbol: 1, marker: 1, pattern: 1, linearGradient: 1, radialGradient: 1, style: 1, title: 1, desc: 1, metadata: 1, filter: 1 };
+  var VEC_SHAPES = { path: 1, rect: 1, circle: 1, ellipse: 1, line: 1, polyline: 1, polygon: 1 };
+  function vecFail(msg) { var e = new Error(msg); e.vec = true; throw e; }
+  function ownMatrix(el) {
+    var l = el.transform && el.transform.baseVal, c = l && l.numberOfItems ? l.consolidate().matrix : null;
+    return c ? new DOMMatrix([c.a, c.b, c.c, c.d, c.e, c.f]) : new DOMMatrix();
+  }
+  function shapeSegs(el) {
+    var t = el.localName, v = function (a) { return el[a].baseVal.value; };
+    if (t === 'path') return parsePathData(el.getAttribute('d') || '');
+    if (t === 'line') return [['M', v('x1'), v('y1')], ['L', v('x2'), v('y2')]];
+    if (t === 'polyline' || t === 'polygon') {
+      var pts = el.points, s = [];
+      for (var i = 0; i < pts.numberOfItems; i++) { var p = pts.getItem(i); s.push([i ? 'L' : 'M', p.x, p.y]); }
+      if (t === 'polygon' && s.length) s.push(['Z']);
+      return s;
+    }
+    var cx, cy, rx, ry;
+    if (t === 'rect') {
+      var x = v('x'), y = v('y'), w = v('width'), h = v('height');
+      if (!(w > 0 && h > 0)) return [];
+      rx = el.hasAttribute('rx') ? v('rx') : null; ry = el.hasAttribute('ry') ? v('ry') : null;
+      if (rx === null) rx = ry || 0; if (ry === null) ry = rx;
+      rx = Math.min(rx, w / 2); ry = Math.min(ry, h / 2);
+      if (!(rx > 0 && ry > 0)) return [['M', x, y], ['L', x + w, y], ['L', x + w, y + h], ['L', x, y + h], ['Z']];
+      var A = ' ' + rx + ' ' + ry + ' 0 0 1 ';
+      return parsePathData('M' + (x + rx) + ' ' + y + 'H' + (x + w - rx) + 'A' + A + (x + w) + ' ' + (y + ry) + 'V' + (y + h - ry) + 'A' + A + (x + w - rx) + ' ' + (y + h) +
+        'H' + (x + rx) + 'A' + A + x + ' ' + (y + h - ry) + 'V' + (y + ry) + 'A' + A + (x + rx) + ' ' + y + 'Z');
+    }
+    cx = v('cx'); cy = v('cy');
+    if (t === 'circle') { rx = ry = v('r'); } else { rx = v('rx'); ry = v('ry'); }
+    if (!(rx > 0 && ry > 0)) return [];
+    return parsePathData('M' + (cx - rx) + ' ' + cy + 'A' + rx + ' ' + ry + ' 0 1 0 ' + (cx + rx) + ' ' + cy + 'A' + rx + ' ' + ry + ' 0 1 0 ' + (cx - rx) + ' ' + cy + 'Z');
+  }
+  function newColor(hex, rgb) {
+    var r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255, k = 1 - Math.max(r, g, b);
+    var cmyk = k >= 1 ? [0, 0, 0, 100] : [(1 - r - k) / (1 - k), (1 - g - k) / (1 - k), (1 - b - k) / (1 - k), k].map(function (x) { return Math.round(x * 100); });
+    return { hex: hex, cmyk: cmyk, mode: rgb[0] >= 250 && rgb[1] >= 250 && rgb[2] >= 250 ? 'white' : 'cmyk' };
+  }
+  function vecPaint(val, opacity, ctx) {
+    if (!val || val === 'none' || parseFloat(opacity) === 0) return null;
+    if (/^url\(/.test(val)) vecFail('het logo bevat een kleurverloop of patroon');
+    if (parseFloat(opacity) < 1) vecFail('het logo bevat doorzichtige kleuren');
+    var m = /^rgba?\(([^)]+)\)$/.exec(val); if (!m) vecFail('het logo bevat een onbekende kleur (' + val + ')');
+    var p = m[1].split(/[\s,\/]+/).map(parseFloat);
+    if (p.length > 3 && p[3] === 0) return null;
+    if (p.length > 3 && p[3] < 1) vecFail('het logo bevat doorzichtige kleuren');
+    var hex = '#' + p.slice(0, 3).map(function (c) { return ('0' + Math.round(c).toString(16)).slice(-2); }).join('');
+    if (!(hex in ctx.idx)) { ctx.idx[hex] = ctx.colors.length; ctx.colors.push(newColor(hex, p)); }
+    return ctx.idx[hex];
+  }
+  function matOf(ctx, el) { return ctx.base.multiply(el.getScreenCTM()); }
+  function mArr(m) { return [m.a, m.b, m.c, m.d, m.e, m.f]; }
+  function pushClip(el, val, ctx) {
+    var m = /^url\(["']?#([^"')]+)["']?\)$/.exec(val), cp = m && ctx.svg.querySelector('#' + CSS.escape(m[1]));
+    if (!cp || cp.localName !== 'clipPath' || cp.getAttribute('clipPathUnits') === 'objectBoundingBox' || cp.hasAttribute('clip-path'))
+      vecFail('het logo gebruikt een uitsnede die niet wordt ondersteund');
+    var kids = Array.prototype.filter.call(cp.children, function (c) { return c.namespaceURI === SVGNS && !VEC_SKIP[c.localName]; });
+    if (kids.length !== 1 || !VEC_SHAPES[kids[0].localName]) vecFail('het logo gebruikt een uitsnede die niet wordt ondersteund');
+    var mc = matOf(ctx, el).multiply(ownMatrix(cp)).multiply(ownMatrix(kids[0]));
+    ctx.ops.push({ t: 'clip', m: mArr(mc), d: shapeSegs(kids[0]), eo: getComputedStyle(kids[0]).clipRule === 'evenodd' });
+  }
+  function pushShape(el, cs, ctx) {
+    var fill = vecPaint(cs.fill, cs.fillOpacity, ctx), sw = parseFloat(cs.strokeWidth) || 0;
+    var stroke = sw > 0 ? vecPaint(cs.stroke, cs.strokeOpacity, ctx) : null;
+    if (fill === null && stroke === null) return;
+    if (['markerStart', 'markerMid', 'markerEnd'].some(function (p) { return cs[p] && cs[p] !== 'none'; })) vecFail('het logo bevat pijlpunten of markeringen');
+    var d = shapeSegs(el); if (!d.length) return;
+    var dash = cs.strokeDasharray && cs.strokeDasharray !== 'none' ? cs.strokeDasharray.split(/[\s,]+/).map(parseFloat).filter(isFinite) : [];
+    if (!dash.some(function (x) { return x > 0; })) dash = [];
+    ctx.ops.push({ t: 'shape', m: mArr(matOf(ctx, el)), d: d, eo: cs.fillRule === 'evenodd', fill: fill, stroke: stroke, sw: sw,
+      join: { round: 1, bevel: 2 }[cs.strokeLinejoin] || 0, cap: { round: 1, square: 2 }[cs.strokeLinecap] || 0,
+      miter: Math.max(1, parseFloat(cs.strokeMiterlimit) || 4), dash: dash, dashOff: parseFloat(cs.strokeDashoffset) || 0 });
+    ctx.shapes++;
+  }
+  function walkVec(parent, ctx) {
+    for (var el = parent.firstElementChild; el; el = el.nextElementSibling) {
+      if (el.namespaceURI !== SVGNS || VEC_SKIP[el.localName]) continue;
+      var t = el.localName, cs = getComputedStyle(el);
+      if (cs.display === 'none' || parseFloat(cs.opacity) === 0) continue;
+      if (parseFloat(cs.opacity) < 1) vecFail('het logo bevat doorzichtige delen');
+      if (cs.filter && cs.filter !== 'none') vecFail('het logo bevat effecten zoals schaduw of vervaging');
+      if (el.hasAttribute('mask') || (cs.maskImage && cs.maskImage !== 'none')) vecFail('het logo bevat een masker');
+      var clip = cs.clipPath && cs.clipPath !== 'none' ? cs.clipPath : '';
+      if (t === 'text') vecFail('het logo bevat tekst; zet de tekst eerst om naar contouren');
+      if (t === 'image') vecFail('het logo bevat een ingesloten afbeelding');
+      if (t !== 'g' && t !== 'svg' && t !== 'a' && t !== 'switch' && !VEC_SHAPES[t]) vecFail('het logo bevat een onderdeel dat niet wordt ondersteund (' + t + ')');
+      if (clip) pushClip(el, clip, ctx);
+      if (VEC_SHAPES[t]) { if (cs.visibility === 'visible') pushShape(el, cs, ctx); }
+      else walkVec(el, ctx);
+      if (clip) ctx.ops.push({ t: 'end' });
+    }
+  }
+  function sanitizeSvg(svg) {
+    Array.prototype.forEach.call(svg.querySelectorAll('script, foreignObject'), function (n) { n.remove(); });
+    Array.prototype.forEach.call(svg.querySelectorAll('style'), function (n) { n.textContent = n.textContent.replace(/@import[^;]*;?/g, ''); });
+    [svg].concat(Array.prototype.slice.call(svg.querySelectorAll('*'))).forEach(function (n) {
+      Array.prototype.slice.call(n.attributes).forEach(function (a) {
+        if (/^on/i.test(a.name) || (a.localName === 'href' && !/^#/.test(a.value.trim()))) n.removeAttributeNode(a);
+      });
+    });
+  }
+  function expandUses(svg) {
+    for (var guard = 0, uses; (uses = svg.querySelectorAll('use')).length; guard++) {
+      if (guard > 20) vecFail('het logo gebruikt te veel verwijzingen (<use>)');
+      Array.prototype.forEach.call(uses, function (u) {
+        var ref = (u.getAttribute('href') || u.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || '').replace(/^#/, '');
+        var target = ref && svg.querySelector('#' + CSS.escape(ref));
+        if (!target || target.localName === 'symbol' || target.localName === 'svg' || target.contains(u))
+          vecFail('het logo gebruikt een verwijzing (<use>) die niet wordt ondersteund');
+        var g = document.createElementNS(SVGNS, 'g');
+        Array.prototype.forEach.call(u.attributes, function (a) {
+          if (!/^(x|y|width|height|href|xlink:href|transform)$/.test(a.name)) g.setAttribute(a.name, a.value);
+        });
+        var ux = u.x.baseVal.value, uy = u.y.baseVal.value;
+        g.setAttribute('transform', (u.getAttribute('transform') || '') + ' translate(' + ux + ' ' + uy + ')');
+        var c = target.cloneNode(true); c.removeAttribute('id'); g.appendChild(c);
+        u.parentNode.replaceChild(g, u);
+      });
+    }
+  }
+  // Leest de vormen uit in dezelfde pixelruimte als de bijgesneden rasterversie (tw × th).
+  function extractVector(rootEl, k, x0, y0, tw, th) {
+    var svg = document.importNode(rootEl, true);
+    sanitizeSvg(svg); expandUses(svg);
+    svg.style.display = 'block';
+    var host = document.createElement('div');
+    host.style.cssText = 'position:fixed;left:0;top:0;opacity:0;pointer-events:none;z-index:-1';
+    host.attachShadow({ mode: 'open' }).appendChild(svg);
+    document.body.appendChild(host);
+    try {
+      var rr = svg.getBoundingClientRect();
+      var ctx = { svg: svg, base: new DOMMatrix([1, 0, 0, 1, -rr.left, -rr.top]), ops: [], colors: [], idx: {}, shapes: 0 };
+      walkVec(svg, ctx);
+      if (!ctx.shapes) vecFail('er zijn geen vormen in het logo gevonden');
+      return { ops: ctx.ops, colors: ctx.colors, k: k, x0: x0, y0: y0, tw: tw, th: th };
+    } finally { host.remove(); }
   }
   function makeTexture() {
     if (logoTex) { logoTex.dispose(); logoTex = null; }
@@ -770,11 +1032,46 @@ var GERBRI_PATHS = [{"c":"b","d":"M 395 337 L 404 337 C 408 337 411 338 413 339 
   function updateLogoInfo() {
     var el = $('loginfo');
     if (logo.kind === 'gerbri') { el.className = 'note'; el.textContent = 'Voorbeeldlogo Gerbri (vector).'; return; }
+    if (logo.vec) {
+      var nc = logo.vec.colors.length;
+      el.className = 'note'; el.textContent = logo.name + ': vectorlogo, ' + nc + (nc === 1 ? ' kleur' : ' kleuren') + '. Blijft scherp in het EPS-bestand.';
+      return;
+    }
     var lay = layoutOf(S, logo.aspect), it = lay.items[0], dpi = it ? Math.round(logo.w / (it.w / 25.4)) : 0;
     var q = dpi >= 100 ? 'goede' : dpi >= 50 ? 'redelijke' : 'lage';
     el.className = 'note' + (dpi && dpi < 50 ? ' warn' : '');
     el.textContent = logo.name + ': ' + logo.w + ' × ' + logo.h + ' px' + (it ? ', ongeveer ' + dpi + ' dpi op ' + Math.round(it.w) + ' mm breed (' + q + ' resolutie).' : '.');
     if (dpi && dpi < 50) el.textContent += ' Gebruik liever een groter bestand of een SVG.';
+    if (logo.vecErr) { el.className = 'note warn'; el.textContent += ' Dit SVG-bestand gaat als afbeelding in het EPS-bestand, want ' + logo.vecErr + '.'; }
+  }
+  function renderColors() {
+    var box = $('logocolors'), v = logo.vec;
+    box.textContent = ''; box.classList.toggle('hide', !v);
+    if (!v) return;
+    var intro = document.createElement('p'); intro.className = 'note';
+    intro.textContent = 'Kleuren in het EPS-bestand. Vul de CMYK-waarden van de klant in als die bekend zijn.';
+    box.appendChild(intro);
+    v.colors.forEach(function (c) {
+      var row = document.createElement('div'); row.className = 'lc';
+      var sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = c.hex;
+      var hx = document.createElement('span'); hx.textContent = c.hex;
+      var sel = document.createElement('select'); sel.setAttribute('aria-label', 'Drukwijze voor ' + c.hex);
+      [['cmyk', 'CMYK'], ['white', 'Steunkleur White'], ['omit', 'Niet drukken']].forEach(function (o) {
+        var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op);
+      });
+      sel.value = c.mode;
+      var cm = document.createElement('span'); cm.className = 'cmyk' + (c.mode === 'cmyk' ? '' : ' hide');
+      ['C', 'M', 'Y', 'K'].forEach(function (n, i) {
+        var lb = document.createElement('label'), inp = document.createElement('input');
+        inp.type = 'number'; inp.min = 0; inp.max = 100; inp.step = 1; inp.value = c.cmyk[i];
+        inp.setAttribute('aria-label', n + ' (%) voor ' + c.hex);
+        inp.addEventListener('input', function () { var x = parseFloat(inp.value); if (isFinite(x)) c.cmyk[i] = Math.max(0, Math.min(100, Math.round(x))); });
+        inp.addEventListener('change', function () { inp.value = c.cmyk[i]; });
+        lb.appendChild(document.createTextNode(n)); lb.appendChild(inp); cm.appendChild(lb);
+      });
+      sel.addEventListener('change', function () { c.mode = sel.value; cm.classList.toggle('hide', c.mode !== 'cmyk'); });
+      row.appendChild(sw); row.appendChild(hx); row.appendChild(sel); row.appendChild(cm); box.appendChild(row);
+    });
   }
 
   /* ---------- Invoer ---------- */
@@ -820,12 +1117,12 @@ var GERBRI_PATHS = [{"c":"b","d":"M 395 337 L 404 337 C 408 337 411 338 413 339 
   $('file').addEventListener('change', async function () {
     var f = this.files && this.files[0]; this.value = ''; if (!f) return;
     status('Logo wordt verwerkt…');
-    try { logo = await processLogo(f); makeTexture(); refresh(false); status('Logo geladen: ' + f.name + '.'); }
+    try { logo = await processLogo(f); makeTexture(); renderColors(); refresh(false); status('Logo geladen: ' + f.name + '.'); }
     catch (err) { status(err.message || 'Het logo kon niet worden geladen.', true); }
   });
   $('demo').addEventListener('click', async function () {
     logo = { kind: 'gerbri', aspect: GERBRI_ASPECT, name: 'Gerbri', canvas: await makeGerbriCanvas() };
-    makeTexture(); refresh(false); status('Voorbeeldlogo Gerbri gebruikt.');
+    makeTexture(); renderColors(); refresh(false); status('Voorbeeldlogo Gerbri gebruikt.');
   });
 
   /* ---------- Download ---------- */
@@ -837,6 +1134,7 @@ var GERBRI_PATHS = [{"c":"b","d":"M 395 337 L 404 337 C 408 337 411 338 413 339 
   }
   function epsLogo() {
     if (logo.kind === 'gerbri') return { kind: 'gerbri', aspect: logo.aspect, paths: GERBRI_PATHS, name: 'Gerbri' };
+    if (logo.vec) return { kind: 'vector', aspect: logo.aspect, vec: logo.vec, name: logo.name };
     var cv = logo.canvas, g = cv.getContext('2d'), d = g.getImageData(0, 0, cv.width, cv.height).data;
     var maxSide = 3200, k = Math.min(1, maxSide / Math.max(cv.width, cv.height)), w = Math.max(1, Math.round(cv.width * k)), h = Math.max(1, Math.round(cv.height * k));
     if (k < 1) { var c2 = document.createElement('canvas'); c2.width = w; c2.height = h; c2.getContext('2d').drawImage(cv, 0, 0, w, h); d = c2.getContext('2d').getImageData(0, 0, w, h).data; }
